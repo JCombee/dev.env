@@ -74,10 +74,16 @@ func NewHarness(t *testing.T) *Harness {
 	return &Harness{t: t, Home: home, FakeDockerDir: fdDir}
 }
 
-// Run executes `dev <args>` and returns stdout, stderr, and the exit error.
+// Run executes `dev <args>` from the HOME dir and returns stdout, stderr, and exit error.
 func (h *Harness) Run(args ...string) (stdout, stderr string, err error) {
+	return h.RunFrom(h.Home, args...)
+}
+
+// RunFrom executes `dev <args>` from the given working directory.
+func (h *Harness) RunFrom(dir string, args ...string) (stdout, stderr string, err error) {
 	h.t.Helper()
 	cmd := exec.Command(devBin, args...)
+	cmd.Dir = dir
 	cmd.Env = h.env()
 
 	var outBuf, errBuf strings.Builder
@@ -92,6 +98,16 @@ func (h *Harness) Run(args ...string) (stdout, stderr string, err error) {
 func (h *Harness) MustRun(args ...string) (stdout, stderr string) {
 	h.t.Helper()
 	out, errOut, err := h.Run(args...)
+	if err != nil {
+		h.t.Fatalf("dev %s failed: %v\nstdout: %s\nstderr: %s", strings.Join(args, " "), err, out, errOut)
+	}
+	return out, errOut
+}
+
+// MustRunFrom calls RunFrom and fails the test if the command exits non-zero.
+func (h *Harness) MustRunFrom(dir string, args ...string) (stdout, stderr string) {
+	h.t.Helper()
+	out, errOut, err := h.RunFrom(dir, args...)
 	if err != nil {
 		h.t.Fatalf("dev %s failed: %v\nstdout: %s\nstderr: %s", strings.Join(args, " "), err, out, errOut)
 	}
