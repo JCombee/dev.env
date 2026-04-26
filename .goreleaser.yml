@@ -29,6 +29,33 @@ archives:
 checksum:
   name_template: checksums.txt
 
+changelog:
+  use: conventional-commits
+  abbrev_length: 7
+  sort: asc
+  groups:
+    - title: "New Features"
+      regexp: '^feat(\(.+\))?!?:'
+      order: 0
+    - title: "Bug Fixes"
+      regexp: '^fix(\(.+\))?!?:'
+      order: 1
+    - title: "Performance"
+      regexp: '^perf(\(.+\))?!?:'
+      order: 2
+    - title: "Other Changes"
+      order: 999
+  filters:
+    exclude:
+      - '^docs:'
+      - '^chore:'
+      - '^ci:'
+      - '^test:'
+      - '^build:'
+      - 'Co-Authored-By:'
+      - 'Merge pull request'
+      - 'Merge branch'
+
 release:
   draft: true
   replace_existing_draft: true
