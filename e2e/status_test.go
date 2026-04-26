@@ -80,6 +80,39 @@ acknowledged: []
 	}
 }
 
+func TestE2E_Status_StoppedProjectNotShown(t *testing.T) {
+	h := NewHarness(t)
+	writeGlobalServices(t, h, `services:
+  mysql-8-0:
+    image: mysql
+    tag: "8.0"
+`)
+	writeProjectState(t, h, "api", "running: true\nservices:\n  mysql-8-0: shared\nacknowledged: []\n")
+	writeProjectState(t, h, "stopped-proj", "running: false\nservices:\n  mysql-8-0: shared\nacknowledged: []\n")
+
+	out, _ := h.MustRun("status")
+	if !strings.Contains(out, "api") {
+		t.Errorf("expected running project 'api' in output\n%s", out)
+	}
+	if strings.Contains(out, "stopped-proj") {
+		t.Errorf("stopped project should not appear in output\n%s", out)
+	}
+}
+
+func TestE2E_Status_ShowsUnknownStatus(t *testing.T) {
+	h := NewHarness(t)
+	writeGlobalServices(t, h, `services:
+  redis-latest:
+    image: redis
+    tag: latest
+`)
+
+	out, _ := h.MustRun("status")
+	if !strings.Contains(out, "unknown") {
+		t.Errorf("expected 'unknown' status before Phase 4 docker integration\n%s", out)
+	}
+}
+
 func TestE2E_Status_MultipleProjects(t *testing.T) {
 	h := NewHarness(t)
 	writeGlobalServices(t, h, `services:
