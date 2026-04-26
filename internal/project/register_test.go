@@ -1,6 +1,7 @@
 package project_test
 
 import (
+	"errors"
 	"os"
 	"testing"
 
@@ -59,8 +60,8 @@ func TestRegister_NameCollision(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected collision error")
 	}
-	col, ok := err.(*project.ErrNameCollision)
-	if !ok {
+	var col *project.ErrNameCollision
+	if !errors.As(err, &col) {
 		t.Fatalf("expected ErrNameCollision, got %T: %v", err, err)
 	}
 	if col.ExistingPath != "/code/myapp" {
