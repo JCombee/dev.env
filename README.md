@@ -1,119 +1,610 @@
 # DEV.ENV
 
-A simple management tool for application developoment services like databases, search engines etc.
+A CLI tool that manages shared development services (databases, caches, search engines) across all your projects — powered by Docker.
 
-## Content
+## What is this?
 
-## Introduction
+Every project needs MySQL, Redis, Elasticsearch, and so on. The typical solution is a `docker-compose.yml` per project, which means a separate container per project per service — wasted memory, slow startup, and duplicate configuration everywhere.
 
-When I am working on apps there are allways these same tools like MySQL, Redis, ElasticSearch and so on.
-Since it feels useless to give every project its own docker compose file which spins up its private containers I looked for a better way to manage this.
+DEV.ENV runs **one shared pool of containers** for all your projects. Services that support multi-tenancy (like MySQL and Redis) isolate projects using their own built-in mechanisms: a dedicated database per project, a separate Redis database index, a scoped Elasticsearch index. DEV.ENV provisions all of that automatically when you run `dev start`.
 
-There are some tools that come very close, but I do like a tool that does it in a way I would like to see it.
+When sharing is not appropriate — for example, a service with a custom configuration or a project that needs full isolation — you can mark any service as `dedicated`. DEV.ENV then spins up a container exclusively for that project, managed separately from the shared pool.
 
-So that is where the root of this project started.
+Any Docker image can be used, not just the ones DEV.ENV natively supports. For unsupported images, DEV.ENV cannot handle provisioning or project isolation, so on first use it will prompt you to acknowledge the implications before starting.
+
+Written in Go. Ships as a single binary with no runtime dependencies.
+
+## How it works
+
+- One global `docker-compose.yml` lives in `~/.dev.env/` and manages all shared service containers.
+- Each project declares which services it needs in a `dev.env.yaml` file at the project root.
+- `dev start` ensures the required containers are running, then provisions project-specific resources (database, user, index, etc.). If `env: true` is set, it also writes a `.env` file with the correct connection strings.
+- `dev stop` tracks which projects are using each container. A container only stops when no other active project depends on it.
+- Project type detection (based on files like `composer.json` or `package.json`) determines which `.env` template to use when `env: true` is set.
 
 ## Features
 
-- Spawn a container once and use it in multiple projects through the the feature that the services provides to seperate it from other projects.
-- Manage which services you use in your project by defining them in one configuration file, the `dev.env.yaml` file.
-- Takes care of preparing the services to be used in your project.
-- Prepares a environment file in your projects with a template based on the type of project you are working on.
-- Powered by docker.
+- **Shared containers, isolated projects.** One MySQL container serves all your projects. Each project gets its own database and user, created automatically.
+- **Dedicated containers when you need them.** Mark any service as `dedicated: true` to give that project its own private container, fully isolated from the shared pool.
+- **Any Docker image, not just supported ones.** Use any image from Docker Hub. DEV.ENV prompts you once per project to acknowledge the limitations of unsupported images before starting them.
+- **Declarative per-project config.** Define required services in `dev.env.yaml`. No docker-compose knowledge needed.
+- **Automatic provisioning.** `dev start` sets up project-scoped resources on first run (databases, users, index env_mappings, etc.).
+- **Smart stop behavior.** Containers stay running as long as another project needs them. No accidental shutdowns.
+- **Optional `.env` generation.** Set `env: true` in `dev.env.yaml` to have DEV.ENV write a ready-to-use `.env` with correct hostnames, ports, credentials, and database names. Disabled by default.
+- **Single binary.** Install once, works globally across all your projects.
 
-## Setup
+## Getting Started
 
-### Prerequisits
+### Prerequisites
 
-- docker
+- [Docker](https://docs.docker.com/get-docker/) (with the Docker daemon running)
 
-### Instalation
+### Installation
 
-TODO!
+#### Linux / macOS
 
-#### Linux
-
-TODO!
-
-#### MacOS
-
-TODO!
+```sh
+curl -sSL https://get.devenv.sh | sh
+```
 
 #### Windows
 
-TODO!
+```sh
+# TODO
+```
 
-## CLI Reference
+## Usage
 
 ### init
 
-Initialize the configuration of the project.
+Initialize DEV.ENV for a project. Creates a `dev.env.yaml` in the current directory.
 
-```
+```sh
 dev init
 ```
 
-Note: With the autodetection of your project type it will sugest certain configurations.
+DEV.ENV detects your project type (Laravel, Node, etc.) and suggests a matching service configuration.
 
 ### start
 
-Starts up the services that are required for this project if they are not yet started.
-After that it will make sure all the preperations are done and if not yet it will prompt you to generate the environment file adjecent to you project type.
+Start all services required by this project and prepare them for use.
 
-```
+```sh
 dev start
 ```
 
-Note: If you already have been working on a other project it will not spawn any new containers.
+```
+✓ mysql:8.0              already running (shared)
+✓ redis:latest           started (shared)
+✓ elasticsearch:8.11     started (dedicated)
+✓ Database "my-project" created
+✓ .env written            (only when env: true)
+```
+
+On first run, DEV.ENV provisions project-specific resources (creates DB, user, index, etc.). On subsequent runs it checks that everything is still in order. If `env: true` is set in `dev.env.yaml`, a `.env` file is written on every run.
+
+Shared containers already running for another project are reused. Dedicated containers are always project-private and never shared.
 
 ### stop
 
-Stops the containers required for this project.
+Stop services that this project was using.
 
-```
+```sh
 dev stop
 ```
 
-Note: It will not stop containers from running if another project is still using them.
-It will only stop the container when all projects using projects are stopped.
+```
+✓ redis:latest           stopped
+✓ elasticsearch:8.11     stopped (dedicated)
+~ mysql:8.0              kept running (in use by: api-project)
+```
+
+Shared containers only stop when no other active project depends on them. Dedicated containers always stop with the project that owns them.
+
+### config
+
+Read and write project configuration without editing `dev.env.yaml` directly.
+
+```sh
+dev config get <key>
+dev config set <key> <value>
+dev config list
+```
+
+`dev config list` shows all current project config:
+
+```
+project   my-project-name
+type      laravel
+env       true
+services  mysql:8.0, redis:latest, elasticsearch:8.11 (dedicated)
+```
+
+`dev config get` reads a single value:
+
+```sh
+dev config get type
+# laravel
+```
+
+`dev config set` writes a value back to `dev.env.yaml`:
+
+```sh
+dev config set env true
+dev config set type node
+```
+
+For nested service config, use dot notation:
+
+```sh
+dev config set services.mysql.tag 8.4
+dev config set services.mysql.env_map.DB_HOST DATABASE_HOST
+```
+
+### global
+
+Run commands across all projects and containers, not just the current project.
+
+```sh
+dev global <command>
+```
+
+#### global start
+
+Start all containers for all known projects.
+
+```sh
+dev global start
+```
+
+```
+✓ mysql:8.0              started (shared)
+✓ redis:latest           started (shared)
+✓ elasticsearch:8.11     started (dedicated — api-project)
+✓ elasticsearch:8.11     started (dedicated — search-project)
+```
+
+#### global stop
+
+Stop all running containers managed by DEV.ENV, regardless of which projects are using them.
+
+```sh
+dev global stop
+```
+
+```
+✓ redis:latest           stopped
+✓ elasticsearch:8.11     stopped (dedicated — api-project)
+✓ elasticsearch:8.11     stopped (dedicated — search-project)
+✓ mysql:8.0              stopped
+```
+
+Unlike `dev stop`, `dev global stop` does not check reference counts — it stops everything immediately.
 
 ### self-update
 
-Updates DEV.ENV to the most recent update.
+Update DEV.ENV to the latest version.
 
-```
+```sh
 dev self-update
 ```
 
 ## Project Configuration
 
-This is what a `dev.env.yaml` could look like:
+Place a `dev.env.yaml` at the root of your project:
 
-```
-project: some-project-name
-type: laravel
+```yaml
+project: my-project-name   # used to scope databases, indices, etc.
+type: laravel              # determines which .env template to generate
+env: true                  # write a .env file on dev start (default: false)
 services:
-  - image: mysql # will resolve to the mysql:8.0 docker image
-    tag: 8.0
-  - redis # will resolve to the redis:latest docker image
+  - image: mysql
+    tag: 8.0               # resolves to mysql:8.0
+    env_map:                   # rename generated variables to custom names
+      DB_HOST: DATABASE_HOST
+      DB_DATABASE: DATABASE_NAME
+      DB_USERNAME: DATABASE_USER
+      DB_PASSWORD: DATABASE_PASS
+  - redis                  # shorthand; resolves to redis:latest
+  - image: elasticsearch
+    tag: 8.11
+    dedicated: true        # spin up a private container for this project only
+  - image: meilisearch     # unsupported image; requires one-time acknowledgement per project
+    tag: v1.7
 ```
 
-### Reference
+### Field reference
 
-TODO!
+| Field | Required | Default | Description |
+|---|---|---|---|
+| `project` | Yes | — | Unique project identifier. Used as the database name, Redis key prefix, etc. |
+| `type` | No | — | Project type for `.env` generation. See [Supported Project Types](#supported-project-types). Required when `env: true`. |
+| `env` | No | `false` | If `true`, write a `.env` file with connection strings on `dev start`. |
+| `services` | Yes | — | List of services. Can be a string (image name) or an object with `image`, `tag`, and `dedicated`. |
 
-## DEV.ENV Configuration
+**Service object fields:**
 
-Aside from all the projects their personal configuration there is also a location where all the project information is stored.
-This is done in the `.dev.env/` dir in your home directory.
+| Field | Required | Default | Description |
+|---|---|---|---|
+| `image` | Yes | — | Docker image name (e.g. `mysql`, `redis`). |
+| `tag` | No | `latest` | Docker image tag (e.g. `8.0`). |
+| `dedicated` | No | `false` | If `true`, spin up a private container for this project instead of using the shared pool. |
+| `env_map` | No | — | Map of canonical variable names to custom names written to `.env`. See [Variable env_mapping](#variable-env_mapping). |
 
-This directory contains the folowing:
+### Variable env_mapping
 
-- The docker-compose file where we manage all of our services.
-- The directory of all of our projects and the status (running or not) of them.
-- User specific preferences.
-- tbd.
+By default, DEV.ENV writes variables using the canonical names documented per service (e.g. `DB_HOST`, `DB_DATABASE`). If your application uses different names, use `env_map` to rename them:
 
-### Reference
+```yaml
+services:
+  - image: mysql
+    env_map:
+      DB_HOST: DATABASE_HOST
+      DB_DATABASE: DATABASE_NAME
+      DB_USERNAME: DATABASE_USER
+      DB_PASSWORD: DATABASE_PASS
+```
 
-TODO!
+Only the variables listed in `env_map` are renamed. Unenv_mapped variables are written using their canonical names. `env_map` has no effect when `env: false`.
+
+## Global Configuration (`~/.dev.env/`)
+
+DEV.ENV stores all global state in `~/.dev.env/`:
+
+```
+~/.dev.env/
+├── docker-compose.yml    # Manages all shared service containers
+├── projects/             # Per-project state and active status
+│   └── my-project/
+│       └── state.json
+└── config.yml            # User preferences (TODO)
+```
+
+## Supported Services
+
+Supported services can run shared (with automatic project isolation) or dedicated. All services support `dedicated: true` to force a private container.
+
+### Databases
+
+#### MySQL
+
+[Docker Hub](https://hub.docker.com/_/mysql) · [Documentation](https://dev.mysql.com/doc/)
+
+| Dedicated only | Shared isolation | What DEV.ENV provisions |
+|---|---|---|
+| No | Separate database + user per project | Creates DB, user, and grants privileges |
+
+| Variable | Example value | Description |
+|---|---|---|
+| `DB_HOST` | `127.0.0.1` | Hostname of the MySQL container |
+| `DB_PORT` | `3306` | Exposed port |
+| `DB_DATABASE` | `my-project` | Created database, matches project name |
+| `DB_USERNAME` | `my-project` | Created user, matches project name |
+| `DB_PASSWORD` | `<generated>` | Randomly generated password |
+
+#### MariaDB
+
+[Docker Hub](https://hub.docker.com/_/mariadb) · [Documentation](https://mariadb.org/documentation/)
+
+| Dedicated only | Shared isolation | What DEV.ENV provisions |
+|---|---|---|
+| No | Separate database + user per project | Creates DB, user, and grants privileges |
+
+Same environment variables as [MySQL](#mysql).
+
+#### Percona
+
+[Docker Hub](https://hub.docker.com/_/percona) · [Documentation](https://docs.percona.com/)
+
+| Dedicated only | Shared isolation | What DEV.ENV provisions |
+|---|---|---|
+| No | Separate database + user per project | Creates DB, user, and grants privileges |
+
+Same environment variables as [MySQL](#mysql).
+
+#### PostgreSQL
+
+[Docker Hub](https://hub.docker.com/_/postgres) · [Documentation](https://www.postgresql.org/docs/)
+
+| Dedicated only | Shared isolation | What DEV.ENV provisions |
+|---|---|---|
+| No | Separate database + user per project | Creates DB and user |
+
+| Variable | Example value | Description |
+|---|---|---|
+| `DB_HOST` | `127.0.0.1` | Hostname of the PostgreSQL container |
+| `DB_PORT` | `5432` | Exposed port |
+| `DB_DATABASE` | `my-project` | Created database, matches project name |
+| `DB_USERNAME` | `my-project` | Created user, matches project name |
+| `DB_PASSWORD` | `<generated>` | Randomly generated password |
+
+#### MongoDB
+
+[Docker Hub](https://hub.docker.com/_/mongo) · [Documentation](https://www.mongodb.com/docs/)
+
+| Dedicated only | Shared isolation | What DEV.ENV provisions |
+|---|---|---|
+| No | Separate database per project | Creates DB and user |
+
+| Variable | Example value | Description |
+|---|---|---|
+| `MONGODB_HOST` | `127.0.0.1` | Hostname of the MongoDB container |
+| `MONGODB_PORT` | `27017` | Exposed port |
+| `MONGODB_DATABASE` | `my-project` | Created database, matches project name |
+| `MONGODB_USERNAME` | `my-project` | Created user, matches project name |
+| `MONGODB_PASSWORD` | `<generated>` | Randomly generated password |
+| `MONGODB_URI` | `mongodb://my-project:<password>@127.0.0.1:27017/my-project` | Full connection string |
+
+#### Cassandra
+
+[Docker Hub](https://hub.docker.com/_/cassandra) · [Documentation](https://cassandra.apache.org/doc/)
+
+| Dedicated only | Shared isolation | What DEV.ENV provisions |
+|---|---|---|
+| No | Separate keyspace per project | Creates keyspace with default replication |
+
+| Variable | Example value | Description |
+|---|---|---|
+| `CASSANDRA_HOST` | `127.0.0.1` | Hostname of the Cassandra container |
+| `CASSANDRA_PORT` | `9042` | Exposed port |
+| `CASSANDRA_KEYSPACE` | `my_project` | Created keyspace, derived from project name |
+
+---
+
+### Search Engines
+
+#### Elasticsearch
+
+[Docker Hub](https://hub.docker.com/_/elasticsearch) · [Documentation](https://www.elastic.co/guide/en/elasticsearch/reference/current/index.html)
+
+| Dedicated only | Shared isolation | What DEV.ENV provisions |
+|---|---|---|
+| No | Separate index per project | Creates index with default env_mappings |
+
+| Variable | Example value | Description |
+|---|---|---|
+| `ELASTICSEARCH_HOST` | `http://127.0.0.1:9200` | Full base URL of the Elasticsearch container |
+| `ELASTICSEARCH_INDEX` | `my-project` | Created index, matches project name |
+
+#### OpenSearch
+
+[Docker Hub](https://hub.docker.com/r/opensearchproject/opensearch) · [Documentation](https://opensearch.org/docs/)
+
+| Dedicated only | Shared isolation | What DEV.ENV provisions |
+|---|---|---|
+| No | Separate index per project | Creates index with default env_mappings |
+
+| Variable | Example value | Description |
+|---|---|---|
+| `OPENSEARCH_HOST` | `http://127.0.0.1:9200` | Full base URL of the OpenSearch container |
+| `OPENSEARCH_INDEX` | `my-project` | Created index, matches project name |
+
+#### Meilisearch
+
+[Docker Hub](https://hub.docker.com/r/getmeili/meilisearch) · [Documentation](https://www.meilisearch.com/docs/)
+
+| Dedicated only | Shared isolation | What DEV.ENV provisions |
+|---|---|---|
+| No | Separate index per project | Creates index |
+
+| Variable | Example value | Description |
+|---|---|---|
+| `MEILISEARCH_HOST` | `http://127.0.0.1:7700` | Full base URL of the Meilisearch container |
+| `MEILISEARCH_KEY` | `<generated>` | Master key used to authenticate requests |
+| `MEILISEARCH_INDEX` | `my-project` | Created index, matches project name |
+
+#### Typesense
+
+[Docker Hub](https://hub.docker.com/r/typesense/typesense) · [Documentation](https://typesense.org/docs/)
+
+| Dedicated only | Shared isolation | What DEV.ENV provisions |
+|---|---|---|
+| No | Separate collection per project | Creates collection |
+
+| Variable | Example value | Description |
+|---|---|---|
+| `TYPESENSE_HOST` | `127.0.0.1` | Hostname of the Typesense container |
+| `TYPESENSE_PORT` | `8108` | Exposed port |
+| `TYPESENSE_PROTOCOL` | `http` | Connection protocol |
+| `TYPESENSE_API_KEY` | `<generated>` | API key used to authenticate requests |
+| `TYPESENSE_COLLECTION` | `my-project` | Created collection, matches project name |
+
+#### Solr
+
+[Docker Hub](https://hub.docker.com/_/solr) · [Documentation](https://solr.apache.org/resources.html)
+
+| Dedicated only | Shared isolation | What DEV.ENV provisions |
+|---|---|---|
+| No | Separate core per project | Creates core |
+
+| Variable | Example value | Description |
+|---|---|---|
+| `SOLR_HOST` | `127.0.0.1` | Hostname of the Solr container |
+| `SOLR_PORT` | `8983` | Exposed port |
+| `SOLR_CORE` | `my-project` | Created core, matches project name |
+
+---
+
+### Caches
+
+#### Redis
+
+[Docker Hub](https://hub.docker.com/_/redis) · [Documentation](https://redis.io/docs/)
+
+| Dedicated only | Shared isolation | What DEV.ENV provisions |
+|---|---|---|
+| No | Separate DB index per project | Assigns and records a DB index |
+
+| Variable | Example value | Description |
+|---|---|---|
+| `REDIS_HOST` | `127.0.0.1` | Hostname of the Redis container |
+| `REDIS_PORT` | `6379` | Exposed port |
+| `REDIS_DB` | `3` | Assigned database index, unique per project |
+
+#### Memcached
+
+[Docker Hub](https://hub.docker.com/_/memcached) · [Documentation](https://memcached.org/)
+
+| Dedicated only | Shared isolation | What DEV.ENV provisions |
+|---|---|---|
+| Yes | No native namespacing | Starts container only |
+
+| Variable | Example value | Description |
+|---|---|---|
+| `MEMCACHED_HOST` | `127.0.0.1` | Hostname of the Memcached container |
+| `MEMCACHED_PORT` | `11211` | Exposed port |
+
+---
+
+### Queues
+
+#### RabbitMQ
+
+[Docker Hub](https://hub.docker.com/_/rabbitmq) · [Documentation](https://www.rabbitmq.com/documentation.html)
+
+| Dedicated only | Shared isolation | What DEV.ENV provisions |
+|---|---|---|
+| No | Separate vhost per project | Creates vhost and user |
+
+| Variable | Example value | Description |
+|---|---|---|
+| `RABBITMQ_HOST` | `127.0.0.1` | Hostname of the RabbitMQ container |
+| `RABBITMQ_PORT` | `5672` | Exposed AMQP port |
+| `RABBITMQ_VHOST` | `my-project` | Created vhost, matches project name |
+| `RABBITMQ_USERNAME` | `my-project` | Created user, matches project name |
+| `RABBITMQ_PASSWORD` | `<generated>` | Randomly generated password |
+
+#### Kafka
+
+[Docker Hub](https://hub.docker.com/r/apache/kafka) · [Documentation](https://kafka.apache.org/documentation/)
+
+| Dedicated only | Shared isolation | What DEV.ENV provisions |
+|---|---|---|
+| No | Separate topic prefix per project | Assigns and records a topic prefix |
+
+| Variable | Example value | Description |
+|---|---|---|
+| `KAFKA_BROKERS` | `127.0.0.1:9092` | Bootstrap broker address |
+| `KAFKA_TOPIC_PREFIX` | `my-project` | Topic prefix assigned to this project |
+
+---
+
+### Storage
+
+#### MinIO
+
+[Docker Hub](https://hub.docker.com/r/minio/minio) · [Documentation](https://min.io/docs/)
+
+| Dedicated only | Shared isolation | What DEV.ENV provisions |
+|---|---|---|
+| No | Separate bucket per project | Creates bucket |
+
+| Variable | Example value | Description |
+|---|---|---|
+| `MINIO_ENDPOINT` | `http://127.0.0.1:9000` | Full base URL of the MinIO container |
+| `MINIO_ACCESS_KEY` | `<generated>` | Access key for authentication |
+| `MINIO_SECRET_KEY` | `<generated>` | Secret key for authentication |
+| `MINIO_BUCKET` | `my-project` | Created bucket, matches project name |
+| `MINIO_USE_SSL` | `false` | SSL disabled for local development |
+
+---
+
+### Broadcasting
+
+#### Soketi
+
+[Docker Hub](https://quay.io/repository/soketi/soketi) · [Documentation](https://docs.soketi.app/)
+
+| Dedicated only | Shared isolation | What DEV.ENV provisions |
+|---|---|---|
+| No | Separate app ID + secret per project | Creates app credentials |
+
+| Variable | Example value | Description |
+|---|---|---|
+| `PUSHER_HOST` | `127.0.0.1` | Hostname of the Soketi container |
+| `PUSHER_PORT` | `6001` | Exposed port |
+| `PUSHER_SCHEME` | `http` | Connection protocol |
+| `PUSHER_APP_ID` | `<generated>` | App ID for this project |
+| `PUSHER_APP_KEY` | `<generated>` | App key for this project |
+| `PUSHER_APP_SECRET` | `<generated>` | App secret for this project |
+
+#### Reverb
+
+[Documentation](https://laravel.com/docs/reverb)
+
+| Dedicated only | Shared isolation | What DEV.ENV provisions |
+|---|---|---|
+| No | Separate app ID + secret per project | Creates app credentials |
+
+| Variable | Example value | Description |
+|---|---|---|
+| `REVERB_HOST` | `127.0.0.1` | Hostname of the Reverb container |
+| `REVERB_PORT` | `8080` | Exposed port |
+| `REVERB_SCHEME` | `http` | Connection protocol |
+| `REVERB_APP_ID` | `<generated>` | App ID for this project |
+| `REVERB_APP_KEY` | `<generated>` | App key for this project |
+| `REVERB_APP_SECRET` | `<generated>` | App secret for this project |
+
+---
+
+### Mail
+
+#### Mailpit
+
+[Docker Hub](https://hub.docker.com/r/axllent/mailpit) · [Documentation](https://mailpit.axllent.org/docs/)
+
+| Dedicated only | Shared isolation | What DEV.ENV provisions |
+|---|---|---|
+| No | None — single shared inbox by design | Starts container only |
+
+| Variable | Example value | Description |
+|---|---|---|
+| `MAIL_HOST` | `127.0.0.1` | Hostname of the Mailpit container |
+| `MAIL_PORT` | `1025` | Exposed SMTP port |
+| `MAIL_MAILER` | `smtp` | Mailer driver |
+
+The Mailpit web UI is available at `http://127.0.0.1:8025`.
+
+#### MailHog
+
+[Docker Hub](https://hub.docker.com/r/mailhog/mailhog) · [Documentation](https://github.com/mailhog/MailHog)
+
+| Dedicated only | Shared isolation | What DEV.ENV provisions |
+|---|---|---|
+| No | None — single shared inbox by design | Starts container only |
+
+| Variable | Example value | Description |
+|---|---|---|
+| `MAIL_HOST` | `127.0.0.1` | Hostname of the MailHog container |
+| `MAIL_PORT` | `1025` | Exposed SMTP port |
+| `MAIL_MAILER` | `smtp` | Mailer driver |
+
+The MailHog web UI is available at `http://127.0.0.1:8025`.
+
+---
+
+### Unsupported images
+
+Any Docker Hub image can be used. When `dev start` encounters an unsupported image for the first time in a project, it pauses and prompts:
+
+```
+! meilisearch:v1.7 is not a supported service.
+
+  DEV.ENV will start and stop this container, but:
+  - No project isolation. All projects using this image share the same container.
+  - No provisioning. No databases, users, or indices will be created.
+  - No .env generation. You must add connection details to your .env manually.
+
+  Acknowledge and continue? [y/N]
+```
+
+Answering yes saves the acknowledgement to the project's state file (`~/.dev.env/projects/<name>/state.json`) so you are not prompted again for that project. The container then runs shared like any other service — no isolation, no provisioning. If you need isolation, use `dedicated: true` explicitly.
+
+## Supported Project Types
+
+| Type | Detection | Generated `.env` variables |
+|---|---|---|
+| `laravel` | `composer.json` with `laravel/framework` | `DB_*`, `REDIS_*`, `MAIL_*` |
+| `node` | `package.json` | `DATABASE_URL`, `REDIS_URL` |
+
+> More types and services are planned. Detection logic and `.env` templates are extensible.
