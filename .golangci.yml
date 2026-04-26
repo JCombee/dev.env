@@ -1,6 +1,7 @@
 linters:
   enable:
-    - errcheck
+    - errcheck      # no swallowed errors
+    - errorlint     # errors compared with == instead of errors.Is/As
     - gosimple
     - govet
     - ineffassign

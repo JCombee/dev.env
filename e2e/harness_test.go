@@ -4,6 +4,7 @@ package e2e_test
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -134,6 +135,27 @@ func (h *Harness) DockerCalls() [][]string {
 		}
 	}
 	return calls
+}
+
+// ExitCode extracts the process exit code from a RunFrom/Run error.
+// Returns 0 for nil error, -1 if the error is not an ExitError.
+func ExitCode(err error) int {
+	if err == nil {
+		return 0
+	}
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) {
+		return exitErr.ExitCode()
+	}
+	return -1
+}
+
+// AssertExitCode fails the test if err does not produce the expected exit code.
+func (h *Harness) AssertExitCode(err error, want int) {
+	h.t.Helper()
+	if got := ExitCode(err); got != want {
+		h.t.Errorf("exit code: got %d, want %d", got, want)
+	}
 }
 
 // FileExists reports whether path exists relative to the fake HOME.

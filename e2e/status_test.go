@@ -36,10 +36,19 @@ func writeProjectState(t *testing.T, h *Harness, projectName, content string) {
 func TestE2E_Status_NoServices(t *testing.T) {
 	h := NewHarness(t)
 	h.MustRun("setup")
+	_, _, err := h.Run("status")
+	h.AssertExitCode(err, 0)
 	out, _ := h.MustRun("status")
 	if !strings.Contains(out, "No services") {
 		t.Errorf("expected 'No services' message, got: %s", out)
 	}
+}
+
+func TestE2E_Status_CorruptServicesYAML_ExitsOne(t *testing.T) {
+	h := NewHarness(t)
+	writeGlobalServices(t, h, "this: is: not: valid: yaml: ][")
+	_, _, err := h.Run("status")
+	h.AssertExitCode(err, 1)
 }
 
 func TestE2E_Status_ShowsRegisteredServices(t *testing.T) {

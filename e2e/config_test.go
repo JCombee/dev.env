@@ -27,9 +27,7 @@ func TestE2E_ConfigList(t *testing.T) {
 	h := NewHarness(t)
 	writeConfig(t, h, sampleConfig)
 
-	// Run from the Home dir so dev can find .dev.env.yaml.
 	out, _ := h.MustRunFrom(h.Home, "config", "list")
-
 	for _, want := range []string{"myapp", "laravel", "mysql", "redis"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("config list output missing %q\noutput: %s", want, out)
@@ -79,12 +77,35 @@ func TestE2E_ConfigSet_ServiceTag(t *testing.T) {
 	}
 }
 
-func TestE2E_ConfigGet_UnknownKey(t *testing.T) {
+// --- error propagation tests: all must exit 1, not 0 ---
+
+func TestE2E_ConfigGet_UnknownKey_ExitsOne(t *testing.T) {
 	h := NewHarness(t)
 	writeConfig(t, h, sampleConfig)
 
 	_, _, err := h.RunFrom(h.Home, "config", "get", "doesnotexist")
-	if err == nil {
-		t.Error("expected non-zero exit for unknown key")
-	}
+	h.AssertExitCode(err, 1)
+}
+
+func TestE2E_ConfigGet_MissingConfigFile_ExitsOne(t *testing.T) {
+	h := NewHarness(t)
+	// No .dev.env.yaml written — must propagate read error as exit 1.
+	_, _, err := h.RunFrom(h.Home, "config", "get", "type")
+	h.AssertExitCode(err, 1)
+}
+
+func TestE2E_ConfigSet_InvalidEnvValue_ExitsOne(t *testing.T) {
+	h := NewHarness(t)
+	writeConfig(t, h, sampleConfig)
+
+	_, _, err := h.RunFrom(h.Home, "config", "set", "env", "notabool")
+	h.AssertExitCode(err, 1)
+}
+
+func TestE2E_ConfigSet_UnknownService_ExitsOne(t *testing.T) {
+	h := NewHarness(t)
+	writeConfig(t, h, sampleConfig)
+
+	_, _, err := h.RunFrom(h.Home, "config", "set", "services.postgres.tag", "15")
+	h.AssertExitCode(err, 1)
 }

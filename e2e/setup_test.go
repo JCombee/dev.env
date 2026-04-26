@@ -46,9 +46,7 @@ func TestE2E_Setup_Idempotent(t *testing.T) {
 func TestE2E_Setup_ExitZero(t *testing.T) {
 	h := NewHarness(t)
 	_, _, err := h.Run("setup")
-	if err != nil {
-		t.Fatalf("expected exit 0, got: %v", err)
-	}
+	h.AssertExitCode(err, 0)
 }
 
 func TestE2E_AutoSetup_OnAnyCommand(t *testing.T) {
