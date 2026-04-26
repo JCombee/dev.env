@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/jcombee/devenv/internal/compose"
 	"github.com/jcombee/devenv/internal/global"
 	"github.com/jcombee/devenv/internal/refcount"
 	"github.com/jcombee/devenv/internal/store"
@@ -17,7 +18,7 @@ var statusCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Show all containers and which projects use them",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return runStatus()
+		return runStatus(compose.NewExecRunner())
 	},
 }
 
@@ -25,8 +26,7 @@ func init() {
 	rootCmd.AddCommand(statusCmd)
 }
 
-func runStatus() error {
-	// Load global services registry.
+func runStatus(runner compose.Runner) error {
 	var svcFile global.Services
 	svcPath := filepath.Join(global.Dir(), "services.yaml")
 	if err := store.Read(svcPath, &svcFile); err != nil {
@@ -38,7 +38,18 @@ func runStatus() error {
 		return nil
 	}
 
-	// Build composeName → []project usage map.
+	// Query real docker status if compose file exists.
+	statusMap := map[string]string{}
+	sharedComposePath := compose.SharedPath()
+	if _, err := os.Stat(sharedComposePath); err == nil {
+		statuses, err := runner.PS(sharedComposePath)
+		if err == nil {
+			for _, s := range statuses {
+				statusMap[s.Name] = s.State
+			}
+		}
+	}
+
 	usage, err := refcount.AllServiceUsage()
 	if err != nil {
 		return fmt.Errorf("read project states: %w", err)
@@ -56,7 +67,10 @@ func runStatus() error {
 		}
 		service := entry.Image + ":" + tag
 
-		status := "unknown" // upgraded to real status in Phase 4
+		status := statusMap[composeName]
+		if status == "" {
+			status = "unknown"
+		}
 
 		projects := usage[composeName]
 		t.AppendRow(table.Row{service, status, strings.Join(projects, ", ")})
