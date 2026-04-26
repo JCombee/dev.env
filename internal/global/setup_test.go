@@ -59,6 +59,39 @@ func TestSetup_Idempotent(t *testing.T) {
 	}
 }
 
+func TestSetup_StubFilesAreValidYAML(t *testing.T) {
+	tmp := runSetup(t)
+	base := filepath.Join(tmp, ".dev.env")
+
+	cases := map[string]string{
+		"settings.yaml": "default_type:",
+		"services.yaml": "services:",
+	}
+	for name, want := range cases {
+		data, err := os.ReadFile(filepath.Join(base, name))
+		if err != nil {
+			t.Fatalf("read %s: %v", name, err)
+		}
+		content := string(data)
+		if !containsString(content, want) {
+			t.Errorf("%s: want YAML key %q, got:\n%s", name, want, content)
+		}
+	}
+}
+
+func containsString(s, sub string) bool {
+	return len(s) >= len(sub) && (s == sub || len(s) > 0 && stringContains(s, sub))
+}
+
+func stringContains(s, sub string) bool {
+	for i := range len(s) - len(sub) + 1 {
+		if s[i:i+len(sub)] == sub {
+			return true
+		}
+	}
+	return false
+}
+
 func TestIsSetUp(t *testing.T) {
 	tmp := t.TempDir()
 	t.Setenv("HOME", tmp)

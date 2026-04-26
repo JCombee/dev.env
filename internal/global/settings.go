@@ -1,11 +1,11 @@
 package global
 
 type Settings struct {
-	DefaultType string `yaml:"default_type,omitempty"`
+	DefaultType string `yaml:"default_type"`
 }
 
 type Services struct {
-	Services []ServiceEntry `yaml:"services,omitempty"`
+	Services []ServiceEntry `yaml:"services"`
 }
 
 type ServiceEntry struct {

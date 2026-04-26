@@ -34,7 +34,7 @@ func Setup() error {
 
 	servicesPath := filepath.Join(base, "services.yaml")
 	if _, err := os.Stat(servicesPath); os.IsNotExist(err) {
-		if err := store.Write(servicesPath, &Services{}); err != nil {
+		if err := store.Write(servicesPath, &Services{Services: []ServiceEntry{}}); err != nil {
 			return err
 		}
 	}
