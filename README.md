@@ -17,7 +17,7 @@ Written in Go. Ships as a single binary with no runtime dependencies.
 ## How it works
 
 - One global `docker-compose.yml` lives in `~/.dev.env/` and manages all shared service containers.
-- Each project declares which services it needs in a `dev.env.yaml` file at the project root.
+- Each project declares which services it needs in a `.dev.env.yaml` file at the project root.
 - `dev start` ensures the required containers are running, then provisions project-specific resources (database, user, index, etc.). If `env: true` is set, it also writes a `.env` file with the correct connection strings.
 - `dev stop` tracks which projects are using each container. A container only stops when no other active project depends on it.
 - Project type detection (based on files like `composer.json` or `package.json`) determines which `.env` template to use when `env: true` is set.
@@ -27,10 +27,10 @@ Written in Go. Ships as a single binary with no runtime dependencies.
 - **Shared containers, isolated projects.** One MySQL container serves all your projects. Each project gets its own database and user, created automatically.
 - **Dedicated containers when you need them.** Mark any service as `dedicated: true` to give that project its own private container, fully isolated from the shared pool.
 - **Any Docker image, not just supported ones.** Use any image from Docker Hub. DEV.ENV prompts you once per project to acknowledge the limitations of unsupported images before starting them.
-- **Declarative per-project config.** Define required services in `dev.env.yaml`. No docker-compose knowledge needed.
+- **Declarative per-project config.** Define required services in `.dev.env.yaml`. No docker-compose knowledge needed.
 - **Automatic provisioning.** `dev start` sets up project-scoped resources on first run (databases, users, index env_mappings, etc.).
 - **Smart stop behavior.** Containers stay running as long as another project needs them. No accidental shutdowns.
-- **Optional `.env` generation.** Set `env: true` in `dev.env.yaml` to have DEV.ENV write a ready-to-use `.env` with correct hostnames, ports, credentials, and database names. Disabled by default.
+- **Optional `.env` generation.** Set `env: true` in `.dev.env.yaml` to have DEV.ENV write a ready-to-use `.env` with correct hostnames, ports, credentials, and database names. Disabled by default.
 - **Single binary.** Install once, works globally across all your projects.
 
 ## Getting Started
@@ -55,15 +55,57 @@ curl -sSL https://get.devenv.sh | sh
 
 ## Usage
 
+### setup
+
+Initialize the global `~/.dev.env/` directory structure. Run this once after installation. Any other command will also trigger setup automatically if the directory does not exist yet.
+
+```sh
+dev setup
+```
+
+```
+✓ Created ~/.dev.env/
+✓ Created ~/.dev.env/docker/
+✓ Created ~/.dev.env/projects/
+✓ services.yaml initialized
+✓ settings.yaml initialized
+```
+
 ### init
 
-Initialize DEV.ENV for a project. Creates a `dev.env.yaml` in the current directory.
+Initialize DEV.ENV for a project. Runs an interactive wizard that detects your project type, lets you select services, and writes a `.dev.env.yaml` in the current directory.
 
 ```sh
 dev init
 ```
 
-DEV.ENV detects your project type (Laravel, Node, etc.) and suggests a matching service configuration.
+```
+Detected project type: laravel
+
+Select services (space to toggle, enter to confirm):
+  [x] mysql
+  [x] redis
+  [ ] elasticsearch
+  [ ] rabbitmq
+  [ ] ...
+
+MySQL tag [latest]: 8.0
+MySQL mode: shared or dedicated? [shared]:
+
+Redis tag [latest]:
+Redis mode: shared or dedicated? [shared]:
+
+Enable .env generation? [y/N]: y
+
+Writing .dev.env.yaml... done
+```
+
+Steps:
+1. Detect project type from files on disk (`composer.json` with `laravel/framework` → laravel, `package.json` → node). Show the detected type and let you confirm or override.
+2. Show all available services. Toggle which ones to include.
+3. For each selected service: prompt for tag (default: latest) and shared vs. dedicated mode.
+4. Ask whether to enable `.env` generation.
+5. Write `.dev.env.yaml`.
 
 ### start
 
@@ -81,7 +123,7 @@ dev start
 ✓ .env written            (only when env: true)
 ```
 
-On first run, DEV.ENV provisions project-specific resources (creates DB, user, index, etc.). On subsequent runs it checks that everything is still in order. If `env: true` is set in `dev.env.yaml`, a `.env` file is written on every run.
+On first run, DEV.ENV provisions project-specific resources (creates DB, user, index, etc.). On subsequent runs it checks that everything is still in order. If `env: true` is set in `.dev.env.yaml`, a `.env` file is written on every run.
 
 Shared containers already running for another project are reused. Dedicated containers are always project-private and never shared.
 
@@ -101,9 +143,24 @@ dev stop
 
 Shared containers only stop when no other active project depends on them. Dedicated containers always stop with the project that owns them.
 
+### status
+
+Show all containers managed by DEV.ENV and which projects are using them.
+
+```sh
+dev status
+```
+
+```
+SERVICE                  STATUS     PROJECTS
+mysql:8.0                running    my-project, api-project
+redis:latest             running    my-project
+elasticsearch:8.11       running    api-project (dedicated)
+```
+
 ### config
 
-Read and write project configuration without editing `dev.env.yaml` directly.
+Read and write project configuration without editing `.dev.env.yaml` directly.
 
 ```sh
 dev config get <key>
@@ -127,7 +184,7 @@ dev config get type
 # laravel
 ```
 
-`dev config set` writes a value back to `dev.env.yaml`:
+`dev config set` writes a value back to `.dev.env.yaml`:
 
 ```sh
 dev config set env true
@@ -191,7 +248,7 @@ dev self-update
 
 ## Project Configuration
 
-Place a `dev.env.yaml` at the root of your project:
+Place a `.dev.env.yaml` at the root of your project:
 
 ```yaml
 project: my-project-name   # used to scope databases, indices, etc.
@@ -247,18 +304,127 @@ services:
 
 Only the variables listed in `env_map` are renamed. Unenv_mapped variables are written using their canonical names. `env_map` has no effect when `env: false`.
 
+### Local overrides (`.dev.env.local.yaml`)
+
+Any field in `.dev.env.yaml` can be overridden locally by placing a `.dev.env.local.yaml` file at the project root. DEV.ENV merges both files at runtime; local values take precedence. This file should be gitignored.
+
+```yaml
+# .dev.env.local.yaml
+project: my-project-local   # override project name
+services:
+  mysql:
+    tag: "8.4"              # use a different tag locally
+```
+
+Add to `.gitignore`:
+
+```
+.dev.env.local.yaml
+```
+
+**Project name collision.** When `dev start` detects that the `project:` name is already registered by a different project at a different path, it prompts:
+
+```
+! Project name "my-project" is already in use by: /home/user/other-project
+
+  Using the same name means sharing the same database, credentials, and state.
+  If this is intentional (e.g. a monorepo), continue. Otherwise, choose a new name.
+
+  New project name [my-project]: my-project-local
+```
+
+The chosen name is written automatically to `.dev.env.local.yaml` so `.dev.env.yaml` stays unchanged and version-control-safe.
+
 ## Global Configuration (`~/.dev.env/`)
 
 DEV.ENV stores all global state in `~/.dev.env/`:
 
 ```
 ~/.dev.env/
-├── docker-compose.yml    # Manages all shared service containers
-├── projects/             # Per-project state and active status
+├── settings.yaml              # Global user preferences
+├── services.yaml              # Registry of all known services and their docker-compose names
+├── projects/
 │   └── my-project/
-│       └── state.json
-└── config.yml            # User preferences (TODO)
+│       ├── project.yaml       # Project metadata: disk path and location of .dev.env.yaml
+│       ├── state.yaml         # Runtime state: running status, active services, acknowledged images
+│       └── secrets.yaml       # Generated credentials: passwords, API keys, app secrets
+└── docker/
+    └── docker-compose.yml     # Managed by DEV.ENV — do not edit manually
 ```
+
+### `services.yaml`
+
+Tracks every `image:tag` pair that has ever been started and assigns each a unique docker-compose service name. This prevents naming collisions when multiple tags of the same image are in use simultaneously (e.g. `mysql:8.0` and `mysql:8.4`).
+
+Service names are derived deterministically: image name + tag with dots replaced by dashes.
+
+```yaml
+services:
+  mysql-8-0:
+    image: mysql
+    tag: "8.0"
+  mysql-8-4:
+    image: mysql
+    tag: "8.4"
+  redis-latest:
+    image: redis
+    tag: latest
+  elasticsearch-8-11:
+    image: elasticsearch
+    tag: "8.11"
+```
+
+When `dev start` encounters an `image:tag` pair not yet registered, it adds an entry to `services.yaml` and regenerates `docker/docker-compose.yml`. Docker-compose service names map directly to the keys in this file.
+
+### `projects/<name>/project.yaml`
+
+Written by `dev init`. Updated automatically if the project is moved.
+
+```yaml
+name: my-project
+path: /home/user/code/my-project
+```
+
+### `projects/<name>/state.yaml`
+
+Updated by `dev start` and `dev stop`. Records which services this project is actively using and whether any unsupported images have been acknowledged.
+
+```yaml
+running: true
+services:
+  mysql-8-0: shared
+  redis-latest: shared
+  elasticsearch-8-11: dedicated
+acknowledged:
+  - meilisearch:v1.7
+```
+
+DEV.ENV determines whether a shared container can be stopped by scanning the `state.yaml` of all known projects. A container stops only when no project lists it as an active service.
+
+### `projects/<name>/secrets.yaml`
+
+Stores generated credentials written during the first `dev start`. Never overwritten on subsequent runs — this ensures connection strings in `.env` stay stable across restarts.
+
+```yaml
+mysql:
+  database: my-project
+  username: my-project
+  password: "xK9mP2wR..."
+rabbitmq:
+  vhost: my-project
+  username: my-project
+  password: "aQ7rL1nZ..."
+meilisearch:
+  master_key: "mK3nV8pT..."
+soketi:
+  app_id: "84729"
+  app_key: "uW2tH5sX..."
+  app_secret: "zJ6pN9qY..."
+```
+
+### `docker/docker-compose.yml`
+
+Generated and maintained by DEV.ENV. Rebuilt whenever `services.yaml` gains a new entry. Service names in this file match the keys in `services.yaml`. Not intended for manual editing.
 
 ## Supported Services
 
