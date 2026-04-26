@@ -1,0 +1,76 @@
+package global_test
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/jcombee/devenv/internal/global"
+)
+
+// runSetup calls global.Setup with a temp dir as the home directory.
+func runSetup(t *testing.T) string {
+	t.Helper()
+	tmp := t.TempDir()
+	t.Setenv("HOME", tmp)
+	t.Setenv("USERPROFILE", tmp) // Windows fallback
+	if err := global.Setup(); err != nil {
+		t.Fatalf("Setup() error: %v", err)
+	}
+	return tmp
+}
+
+func TestSetup_CreatesDirectories(t *testing.T) {
+	tmp := runSetup(t)
+	base := filepath.Join(tmp, ".dev.env")
+
+	dirs := []string{base, filepath.Join(base, "docker"), filepath.Join(base, "projects")}
+	for _, d := range dirs {
+		if _, err := os.Stat(d); os.IsNotExist(err) {
+			t.Errorf("expected dir %s to exist", d)
+		}
+	}
+}
+
+func TestSetup_CreatesSettingsAndServices(t *testing.T) {
+	tmp := runSetup(t)
+	base := filepath.Join(tmp, ".dev.env")
+
+	files := []string{
+		filepath.Join(base, "settings.yaml"),
+		filepath.Join(base, "services.yaml"),
+	}
+	for _, f := range files {
+		if _, err := os.Stat(f); os.IsNotExist(err) {
+			t.Errorf("expected file %s to exist", f)
+		}
+	}
+}
+
+func TestSetup_Idempotent(t *testing.T) {
+	tmp := t.TempDir()
+	t.Setenv("HOME", tmp)
+	t.Setenv("USERPROFILE", tmp)
+
+	for i := range 3 {
+		if err := global.Setup(); err != nil {
+			t.Fatalf("Setup() call %d error: %v", i+1, err)
+		}
+	}
+}
+
+func TestIsSetUp(t *testing.T) {
+	tmp := t.TempDir()
+	t.Setenv("HOME", tmp)
+	t.Setenv("USERPROFILE", tmp)
+
+	if global.IsSetUp() {
+		t.Fatal("IsSetUp() should be false before Setup()")
+	}
+	if err := global.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	if !global.IsSetUp() {
+		t.Fatal("IsSetUp() should be true after Setup()")
+	}
+}

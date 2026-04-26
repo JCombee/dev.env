@@ -1,0 +1,32 @@
+services:
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+      target: builder
+    working_dir: /src
+    command: go test ./...
+    volumes:
+      - .:/src
+      - go-cache:/root/.cache/go-build
+      - go-mod:/go/pkg/mod
+
+  # Integration test runner — mounts host Docker socket so `dev start` can
+  # spin up real containers during testing. Only used for //go:build integration tests.
+  integration:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    working_dir: /src
+    command: go test -tags integration ./...
+    environment:
+      - HOME=/root
+    volumes:
+      - .:/src
+      - go-cache:/root/.cache/go-build
+      - go-mod:/go/pkg/mod
+      - /var/run/docker.sock:/var/run/docker.sock
+
+volumes:
+  go-cache:
+  go-mod:
