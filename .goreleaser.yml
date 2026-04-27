@@ -31,7 +31,6 @@ checksum:
 
 changelog:
   use: conventional-commits
-  abbrev_length: 7
   sort: asc
   groups:
     - title: "New Features"
