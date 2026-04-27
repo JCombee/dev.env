@@ -38,8 +38,13 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add CHANGELOG.md
-          git diff --staged --quiet || git commit -m "chore: update CHANGELOG.md for ${{ github.ref_name }}"
-          git push origin HEAD:main
+          if git diff --staged --quiet; then
+            echo "No CHANGELOG changes"
+          else
+            git commit -m "chore: update CHANGELOG.md for ${{ github.ref_name }}"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
 
       - uses: goreleaser/goreleaser-action@v6
         with:
