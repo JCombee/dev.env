@@ -92,6 +92,28 @@ func stringContains(s, sub string) bool {
 	return false
 }
 
+func TestSettings_PortsRoundTrip(t *testing.T) {
+	tmp := runSetup(t)
+	base := filepath.Join(tmp, ".dev.env")
+	settingsPath := filepath.Join(base, "settings.yaml")
+
+	content := "default_type: laravel\nports:\n  mysql-8-0: 13380\n  redis-7-0: 16370\n"
+	if err := os.WriteFile(settingsPath, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	settings, err := global.ReadSettings()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if settings.Ports["mysql-8-0"] != 13380 {
+		t.Errorf("mysql-8-0 port: got %d want 13380", settings.Ports["mysql-8-0"])
+	}
+	if settings.Ports["redis-7-0"] != 16370 {
+		t.Errorf("redis-7-0 port: got %d want 16370", settings.Ports["redis-7-0"])
+	}
+}
+
 func TestIsSetUp(t *testing.T) {
 	tmp := t.TempDir()
 	t.Setenv("HOME", tmp)

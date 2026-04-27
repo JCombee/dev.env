@@ -87,6 +87,35 @@ func TestLoad_MissingFile(t *testing.T) {
 	}
 }
 
+func TestLoad_LocalOverride_Port(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, config.File, "project: myapp\nservices:\n  - image: mysql\n    tag: \"8.0\"\n")
+	writeFile(t, dir, config.LocalFile, "services:\n  mysql:\n    port: 13306\n")
+
+	cfg, err := config.Load(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	svc := cfg.Services[0]
+	if svc.Port == nil || *svc.Port != 13306 {
+		t.Errorf("port override: got %v want 13306", svc.Port)
+	}
+	if !svc.Dedicated {
+		t.Error("port override should force dedicated=true")
+	}
+}
+
+func TestLoad_LocalOverride_PortInvalidRange(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, config.File, "project: myapp\nservices:\n  - image: mysql\n    tag: \"8.0\"\n")
+	writeFile(t, dir, config.LocalFile, "services:\n  mysql:\n    port: 99999\n")
+
+	_, err := config.Load(dir)
+	if err == nil {
+		t.Error("expected error for out-of-range port")
+	}
+}
+
 func TestSave_RoundTrip(t *testing.T) {
 	dir := t.TempDir()
 	cfg := &config.ProjectConfig{
