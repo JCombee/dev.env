@@ -31,6 +31,7 @@ Written in Go. Ships as a single binary with no runtime dependencies.
 - **Automatic provisioning.** `dev start` sets up project-scoped resources on first run (databases, users, index env_mappings, etc.).
 - **Smart stop behavior.** Containers stay running as long as another project needs them. No accidental shutdowns.
 - **Optional `.env` generation.** Set `env: true` in `.dev.env.yaml` to have DEV.ENV write a ready-to-use `.env` with correct hostnames, ports, credentials, and database names. Disabled by default.
+- **Conflict-free port allocation.** Each `image:tag` pair gets a deterministic host port derived from the service's default port and the version tag, so multiple versions of the same service never collide. Override any port globally in `~/.dev.env/settings.yaml`.
 - **Single binary.** Install once, works globally across all your projects.
 
 ## Getting Started
@@ -288,6 +289,12 @@ services:
 | `dedicated` | No | `false` | If `true`, spin up a private container for this project instead of using the shared pool. |
 | `env_map` | No | — | Map of canonical variable names to custom names written to `.env`. See [Variable env_mapping](#variable-env_mapping). |
 
+**Local-override-only fields** (`.dev.env.local.yaml` only, not valid in `.dev.env.yaml`):
+
+| Field | Required | Default | Description |
+|---|---|---|---|
+| `port` | No | — | Override the host port for this service. **Forces `dedicated: true`** — the service runs as a private container for this project. Not recommended; prefer a global port override in `~/.dev.env/settings.yaml`. |
+
 ### Variable env_mapping
 
 By default, DEV.ENV writes variables using the canonical names documented per service (e.g. `DB_HOST`, `DB_DATABASE`). If your application uses different names, use `env_map` to rename them:
@@ -314,6 +321,7 @@ project: my-project-local   # override project name
 services:
   mysql:
     tag: "8.4"              # use a different tag locally
+    port: 13306             # override host port (forces dedicated — not recommended)
 ```
 
 Add to `.gitignore`:
@@ -335,6 +343,61 @@ Add to `.gitignore`:
 
 The chosen name is written automatically to `.dev.env.local.yaml` so `.dev.env.yaml` stays unchanged and version-control-safe.
 
+## Port Allocation
+
+DEV.ENV assigns each `image:tag` pair a deterministic host port so that running multiple versions of the same service simultaneously never causes conflicts.
+
+### How ports are computed
+
+The host port is derived from the service's canonical port and the version tag:
+
+1. Parse the major and minor version from the tag (e.g. `8.0` → `80`, `5.7` → `57`, `7` → `70`, `latest` → `00`).
+2. Drop the last two digits of the base port and append the version suffix.
+
+Examples:
+
+| Service | Tag | Base port | Suffix | Host port |
+|---------|-----|-----------|--------|-----------|
+| `mysql` | `8.0` | 3306 | `80` | `3380` |
+| `mysql` | `5.7` | 3306 | `57` | `3357` |
+| `postgres` | `16` | 5432 | `16` | `5416` |
+| `redis` | `7` | 6379 | `70` | `6370` |
+| `elasticsearch` | `8.11` | 9200 | `81` | `9281` |
+| `mongo` | `latest` | 27017 | `00` | `27000` |
+
+> Port numbers follow the pattern `<base family><version suffix>`. The "family" (33xx for MySQL, 54xx for PostgreSQL, etc.) stays recognisable.
+
+`dev start` validates that no two services in the current run resolve to the same host port and exits with an error if a collision is detected.
+
+### Overriding ports globally
+
+Add a `ports` map to `~/.dev.env/settings.yaml`, keyed by docker-compose service name:
+
+```yaml
+# ~/.dev.env/settings.yaml
+default_type: laravel
+ports:
+  mysql-8-0: 13380
+  redis-7-0: 16370
+```
+
+Global overrides apply to the shared container and affect all projects that use that service. Use this when the computed default conflicts with another application already running on your machine.
+
+### Overriding ports per project
+
+> **Not recommended.** A per-project port override forces the service to run as a dedicated container for that project, bypassing the shared pool that DEV.ENV is optimised for. Prefer a global override in `~/.dev.env/settings.yaml` instead.
+
+Add `port` to a service entry in `.dev.env.local.yaml`:
+
+```yaml
+# .dev.env.local.yaml
+services:
+  mysql:
+    port: 13306
+```
+
+DEV.ENV automatically treats the service as `dedicated: true` when a project-level port is set. The dedicated container runs on the overridden port and is fully isolated from the shared instance. This option exists for cases where per-developer port customisation is required and a global override is not practical.
+
 ## Global Configuration (`~/.dev.env/`)
 
 DEV.ENV stores all global state in `~/.dev.env/`:
@@ -351,6 +414,15 @@ DEV.ENV stores all global state in `~/.dev.env/`:
 └── docker/
     └── docker-compose.yml     # Managed by DEV.ENV — do not edit manually
 ```
+
+### `settings.yaml`
+
+Global user preferences. Currently supports:
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `default_type` | string | Default project type used when `type` is not set in `.dev.env.yaml`. |
+| `ports` | map | Override computed host ports by docker-compose service name (e.g. `mysql-8-0: 13380`). See [Port Allocation](#port-allocation). |
 
 ### `services.yaml`
 
