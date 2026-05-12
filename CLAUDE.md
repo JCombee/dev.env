@@ -16,6 +16,8 @@ Plan the feature and write its documentation first. This includes:
 
 **Stop here. Wait for user approval before writing any code or tests.**
 
+Once approved: update `README.md` to reflect the feature (commands, flags, config, behavior), then commit it before proceeding.
+
 ### Phase 2 — Tests
 Write all tests before implementing:
 - Unit tests for each internal package involved
