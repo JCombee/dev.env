@@ -159,6 +159,37 @@ redis:latest             running    my-project
 elasticsearch:8.11       running    api-project (dedicated)
 ```
 
+### exec
+
+Open an interactive session inside a running container for the current project, with credentials and database pre-filled.
+
+```sh
+dev exec <service>   # connect to a specific service
+dev exec             # list available services for this project
+```
+
+`<service>` is the image name as declared in `.dev.env.yaml` (e.g. `mysql`, `redis`, `postgres`).
+
+**Examples:**
+
+```sh
+dev exec mysql       # opens mysql REPL connected to the project database
+dev exec redis       # opens redis-cli on the project's assigned DB index
+dev exec postgres    # opens psql connected to the project database
+```
+
+**What DEV.ENV opens per service:**
+
+| Service | Session |
+|---------|---------|
+| `mysql` / `mariadb` / `percona` | `mysql` REPL — root user, project database, password pre-filled |
+| `postgres` | `psql` — project user, project database, password pre-filled |
+| `mongo` | `mongosh` — root user, password pre-filled |
+| `redis` | `redis-cli` — connected to the project's assigned DB index |
+| All others | `bash` shell inside the container |
+
+The project must be running (`dev start`) before using `dev exec`.
+
 ### config
 
 Read and write project configuration without editing `.dev.env.yaml` directly.
