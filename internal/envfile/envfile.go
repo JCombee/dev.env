@@ -1,0 +1,201 @@
+package envfile
+
+import (
+	"fmt"
+	"os"
+	"sort"
+	"strconv"
+	"strings"
+
+	"github.com/jcombee/devenv/internal/global"
+	"github.com/jcombee/devenv/internal/project"
+)
+
+// ServiceVars returns the canonical .env variables for one service.
+// Returns an empty map for unknown images.
+func ServiceVars(image, composeName string, hostPort int, projectName string, ds global.DockerSecrets, ps project.Secrets) map[string]string {
+	port := strconv.Itoa(hostPort)
+	creds := ds[composeName]
+
+	switch image {
+	case "mysql", "mariadb", "percona":
+		return map[string]string{
+			"DB_HOST":     "127.0.0.1",
+			"DB_PORT":     port,
+			"DB_DATABASE": projectName,
+			"DB_USERNAME": "root",
+			"DB_PASSWORD": creds["root_password"],
+		}
+
+	case "postgres":
+		return map[string]string{
+			"DB_HOST":     "127.0.0.1",
+			"DB_PORT":     port,
+			"DB_DATABASE": projectName,
+			"DB_USERNAME": "postgres",
+			"DB_PASSWORD": creds["root_password"],
+		}
+
+	case "mongo":
+		pw := creds["root_password"]
+		uri := fmt.Sprintf("mongodb://root:%s@127.0.0.1:%s/%s", pw, port, projectName)
+		return map[string]string{
+			"MONGODB_HOST":     "127.0.0.1",
+			"MONGODB_PORT":     port,
+			"MONGODB_DATABASE": projectName,
+			"MONGODB_USERNAME": "root",
+			"MONGODB_PASSWORD": pw,
+			"MONGODB_URI":      uri,
+		}
+
+	case "redis":
+		dbIndex := ""
+		if ps["redis"] != nil {
+			dbIndex = ps["redis"]["db_index"]
+		}
+		return map[string]string{
+			"REDIS_HOST": "127.0.0.1",
+			"REDIS_PORT": port,
+			"REDIS_DB":   dbIndex,
+		}
+
+	case "memcached":
+		return map[string]string{
+			"MEMCACHED_HOST": "127.0.0.1",
+			"MEMCACHED_PORT": port,
+		}
+
+	case "elasticsearch", "opensearch":
+		return map[string]string{
+			"ELASTICSEARCH_HOST":  fmt.Sprintf("http://127.0.0.1:%s", port),
+			"ELASTICSEARCH_INDEX": projectName,
+		}
+
+	case "meilisearch":
+		return map[string]string{
+			"MEILISEARCH_HOST":  fmt.Sprintf("http://127.0.0.1:%s", port),
+			"MEILISEARCH_KEY":   creds["master_key"],
+			"MEILISEARCH_INDEX": projectName,
+		}
+
+	case "typesense":
+		apiKey := ""
+		if ps["typesense"] != nil {
+			apiKey = ps["typesense"]["api_key"]
+		}
+		return map[string]string{
+			"TYPESENSE_HOST":       "127.0.0.1",
+			"TYPESENSE_PORT":       port,
+			"TYPESENSE_PROTOCOL":   "http",
+			"TYPESENSE_API_KEY":    apiKey,
+			"TYPESENSE_COLLECTION": projectName,
+		}
+
+	case "solr":
+		return map[string]string{
+			"SOLR_HOST": "127.0.0.1",
+			"SOLR_PORT": port,
+			"SOLR_CORE": projectName,
+		}
+
+	case "cassandra":
+		return map[string]string{
+			"CASSANDRA_HOST":     "127.0.0.1",
+			"CASSANDRA_PORT":     port,
+			"CASSANDRA_KEYSPACE": strings.ReplaceAll(projectName, "-", "_"),
+		}
+
+	case "rabbitmq":
+		return map[string]string{
+			"RABBITMQ_HOST":     "127.0.0.1",
+			"RABBITMQ_PORT":     port,
+			"RABBITMQ_VHOST":    projectName,
+			"RABBITMQ_USERNAME": "admin",
+			"RABBITMQ_PASSWORD": creds["admin_password"],
+		}
+
+	case "kafka":
+		return map[string]string{
+			"KAFKA_BROKERS":      fmt.Sprintf("127.0.0.1:%s", port),
+			"KAFKA_TOPIC_PREFIX": projectName,
+		}
+
+	case "minio":
+		return map[string]string{
+			"MINIO_ENDPOINT":   fmt.Sprintf("http://127.0.0.1:%s", port),
+			"MINIO_ACCESS_KEY": creds["root_user"],
+			"MINIO_SECRET_KEY": creds["root_password"],
+			"MINIO_BUCKET":     projectName,
+			"MINIO_USE_SSL":    "false",
+		}
+
+	case "soketi":
+		app := ps["soketi"]
+		return map[string]string{
+			"PUSHER_HOST":       "127.0.0.1",
+			"PUSHER_PORT":       port,
+			"PUSHER_SCHEME":     "http",
+			"PUSHER_APP_ID":     app["app_id"],
+			"PUSHER_APP_KEY":    app["app_key"],
+			"PUSHER_APP_SECRET": app["app_secret"],
+		}
+
+	case "reverb":
+		app := ps["reverb"]
+		return map[string]string{
+			"REVERB_HOST":       "127.0.0.1",
+			"REVERB_PORT":       port,
+			"REVERB_SCHEME":     "http",
+			"REVERB_APP_ID":     app["app_id"],
+			"REVERB_APP_KEY":    app["app_key"],
+			"REVERB_APP_SECRET": app["app_secret"],
+		}
+
+	case "mailpit", "mailhog":
+		return map[string]string{
+			"MAIL_HOST":   "127.0.0.1",
+			"MAIL_PORT":   port,
+			"MAIL_MAILER": "smtp",
+		}
+	}
+
+	return map[string]string{}
+}
+
+// ApplyEnvMap renames canonical keys according to envMap.
+// Keys present in envMap are renamed; all others pass through unchanged.
+func ApplyEnvMap(vars map[string]string, envMap map[string]string) map[string]string {
+	if len(envMap) == 0 {
+		return vars
+	}
+	result := make(map[string]string, len(vars))
+	for k, v := range vars {
+		if custom, ok := envMap[k]; ok {
+			result[custom] = v
+		} else {
+			result[k] = v
+		}
+	}
+	return result
+}
+
+// Write writes allVars to path as a .env file, overwriting any existing file.
+// Keys are written in alphabetical order, preceded by a generated-by header.
+func Write(path string, allVars map[string]string) error {
+	keys := make([]string, 0, len(allVars))
+	for k := range allVars {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	var sb strings.Builder
+	sb.WriteString("# Generated by dev — do not edit manually\n")
+	for _, k := range keys {
+		sb.WriteString(k)
+		sb.WriteByte('=')
+		sb.WriteString(allVars[k])
+		sb.WriteByte('\n')
+	}
+
+	return os.WriteFile(path, []byte(sb.String()), 0o644)
+}

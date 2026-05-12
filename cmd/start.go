@@ -9,7 +9,9 @@ import (
 	"github.com/charmbracelet/huh"
 	"github.com/jcombee/devenv/internal/compose"
 	"github.com/jcombee/devenv/internal/config"
+	"github.com/jcombee/devenv/internal/envfile"
 	"github.com/jcombee/devenv/internal/global"
+	"github.com/jcombee/devenv/internal/ports"
 	"github.com/jcombee/devenv/internal/project"
 	"github.com/jcombee/devenv/internal/store"
 	"github.com/spf13/cobra"
@@ -151,6 +153,48 @@ func runStart(runner compose.Runner) error {
 	if err := global.SaveDockerSecrets(dockerSecrets); err != nil {
 		return fmt.Errorf("save docker secrets: %w", err)
 	}
+
+	// Ensure per-project secrets (redis DB index, soketi/reverb app creds, etc.).
+	projSecrets, err := project.LoadSecrets(cfg.Project)
+	if err != nil {
+		return fmt.Errorf("load project secrets: %w", err)
+	}
+	for _, svcEntry := range cfg.Services {
+		tag := svcEntry.Tag
+		if tag == "" {
+			tag = "latest"
+		}
+		composeName := compose.ServiceName(svcEntry.Image, tag)
+		if err := envfile.EnsureProjectSecrets(svcEntry.Image, composeName, cfg.Project, projSecrets, dockerSecrets); err != nil {
+			return fmt.Errorf("ensure project secrets for %s: %w", svcEntry.Image, err)
+		}
+	}
+	if err := project.SaveSecrets(cfg.Project, projSecrets); err != nil {
+		return fmt.Errorf("save project secrets: %w", err)
+	}
+
+	// Write .env when enabled.
+	if cfg.Env {
+		allVars := map[string]string{}
+		for _, svcEntry := range cfg.Services {
+			tag := svcEntry.Tag
+			if tag == "" {
+				tag = "latest"
+			}
+			composeName := compose.ServiceName(svcEntry.Image, tag)
+			r, _ := ports.Resolve(svcEntry.Image, tag, settings.Ports, svcEntry.Port)
+			svcVars := envfile.ServiceVars(svcEntry.Image, composeName, r.Port, cfg.Project, dockerSecrets, projSecrets)
+			svcVars = envfile.ApplyEnvMap(svcVars, svcEntry.EnvMap)
+			for k, v := range svcVars {
+				allVars[k] = v
+			}
+		}
+		if err := envfile.Write(filepath.Join(cwd, ".env"), allVars); err != nil {
+			return fmt.Errorf("write .env: %w", err)
+		}
+		fmt.Println("✓ .env written")
+	}
+
 	if err := project.SaveState(cfg.Project, state); err != nil {
 		return fmt.Errorf("save state: %w", err)
 	}
