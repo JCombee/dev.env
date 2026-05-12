@@ -7,6 +7,7 @@ import (
 
 	"github.com/jcombee/devenv/internal/config"
 	"github.com/jcombee/devenv/internal/global"
+	"github.com/jcombee/devenv/internal/ports"
 	"github.com/jcombee/devenv/internal/services"
 	"gopkg.in/yaml.v3"
 )
@@ -24,8 +25,9 @@ type composeService struct {
 
 // WriteShared regenerates ~/.dev.env/docker/docker-compose.yml from the
 // full services.yaml map and current docker secrets.
-func WriteShared(svcMap map[string]global.GlobalServiceEntry, ds global.DockerSecrets) error {
-	data, err := renderShared(svcMap, ds)
+// globalPorts overrides computed host ports by docker-compose service name; nil means use computed defaults.
+func WriteShared(svcMap map[string]global.GlobalServiceEntry, ds global.DockerSecrets, globalPorts map[string]int) error {
+	data, err := renderShared(svcMap, ds, globalPorts)
 	if err != nil {
 		return err
 	}
@@ -54,10 +56,21 @@ func WriteDedicated(projectName string, entries []config.ServiceEntry, ds global
 	return os.WriteFile(path, data, 0o644)
 }
 
-func renderShared(svcMap map[string]global.GlobalServiceEntry, ds global.DockerSecrets) ([]byte, error) {
+func renderShared(svcMap map[string]global.GlobalServiceEntry, ds global.DockerSecrets, globalPorts map[string]int) ([]byte, error) {
 	cf := composeFile{Services: map[string]composeService{}}
+	seen := map[int]string{}
 	for composeName, entry := range svcMap {
-		cf.Services[composeName] = buildService(entry.Image, entry.Tag, composeName, ds)
+		r, err := ports.Resolve(entry.Image, entry.Tag, globalPorts, nil)
+		if err != nil {
+			return nil, fmt.Errorf("resolve port for %s: %w", composeName, err)
+		}
+		if r.Port != 0 {
+			if conflict, ok := seen[r.Port]; ok {
+				return nil, fmt.Errorf("port conflict: %s and %s both resolve to host port %d", conflict, composeName, r.Port)
+			}
+			seen[r.Port] = composeName
+		}
+		cf.Services[composeName] = buildService(entry.Image, entry.Tag, composeName, r.Port, ds)
 	}
 	return yaml.Marshal(cf)
 }
@@ -74,12 +87,16 @@ func renderDedicated(projectName string, entries []config.ServiceEntry, ds globa
 		}
 		// Dedicated service name is project-prefixed to avoid cross-file conflicts.
 		composeName := projectName + "-" + ServiceName(entry.Image, tag)
-		cf.Services[composeName] = buildService(entry.Image, tag, composeName, ds)
+		r, err := ports.Resolve(entry.Image, tag, nil, entry.Port)
+		if err != nil {
+			return nil, fmt.Errorf("resolve port for %s: %w", composeName, err)
+		}
+		cf.Services[composeName] = buildService(entry.Image, tag, composeName, r.Port, ds)
 	}
 	return yaml.Marshal(cf)
 }
 
-func buildService(image, tag, composeName string, ds global.DockerSecrets) composeService {
+func buildService(image, tag, composeName string, hostPort int, ds global.DockerSecrets) composeService {
 	if tag == "" {
 		tag = "latest"
 	}
@@ -88,8 +105,8 @@ func buildService(image, tag, composeName string, ds global.DockerSecrets) compo
 		Image:   image + ":" + tag,
 		Restart: "unless-stopped",
 	}
-	if svc.Port != 0 {
-		cs.Ports = []string{fmt.Sprintf("%d:%d", svc.Port, svc.Port)}
+	if hostPort != 0 && svc.Port != 0 {
+		cs.Ports = []string{fmt.Sprintf("%d:%d", hostPort, svc.Port)}
 	}
 	env := ContainerEnv(image, composeName, ds)
 	if len(env) > 0 {

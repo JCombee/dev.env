@@ -20,6 +20,7 @@ type ServiceEntry struct {
 	Tag       string            `yaml:"tag,omitempty"`
 	Dedicated bool              `yaml:"dedicated,omitempty"`
 	EnvMap    map[string]string `yaml:"env_map,omitempty"`
+	Port      *int              `yaml:"port,omitempty"`
 }
 
 // UnmarshalYAML handles both the shorthand string form ("redis") and the full object form.
@@ -56,6 +57,7 @@ type ServiceOverride struct {
 	Tag       string            `yaml:"tag,omitempty"`
 	Dedicated *bool             `yaml:"dedicated,omitempty"`
 	EnvMap    map[string]string `yaml:"env_map,omitempty"`
+	Port      *int              `yaml:"port,omitempty"`
 }
 
 // LocalConfig holds optional overrides from .dev.env.local.yaml.
@@ -80,6 +82,12 @@ func Load(dir string) (*ProjectConfig, error) {
 			return nil, fmt.Errorf("read %s: %w", LocalFile, err)
 		}
 		merge(&cfg, &local)
+	}
+
+	for _, svc := range cfg.Services {
+		if svc.Port != nil && (*svc.Port < 1 || *svc.Port > 65535) {
+			return nil, fmt.Errorf("service %q: port %d out of range (1–65535)", svc.Image, *svc.Port)
+		}
 	}
 
 	return &cfg, nil
@@ -119,6 +127,10 @@ func merge(cfg *ProjectConfig, local *LocalConfig) {
 						cfg.Services[i].EnvMap = map[string]string{}
 					}
 					cfg.Services[i].EnvMap[k] = v
+				}
+				if override.Port != nil {
+					cfg.Services[i].Port = override.Port
+					cfg.Services[i].Dedicated = true
 				}
 			}
 		}

@@ -52,6 +52,10 @@ func runStart(runner compose.Runner) error {
 	if err != nil {
 		return err
 	}
+	settings, err := global.ReadSettings()
+	if err != nil {
+		return err
+	}
 
 	sharedComposePath := compose.SharedPath()
 	state := &project.State{
@@ -99,7 +103,7 @@ func runStart(runner compose.Runner) error {
 	}
 
 	// Always regenerate shared compose — ensures new secrets are reflected.
-	if err := compose.WriteShared(svcFile.Services, dockerSecrets); err != nil {
+	if err := compose.WriteShared(svcFile.Services, dockerSecrets, settings.Ports); err != nil {
 		return fmt.Errorf("write docker-compose.yml: %w", err)
 	}
 

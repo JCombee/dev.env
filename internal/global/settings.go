@@ -1,9 +1,25 @@
 package global
 
-import "gopkg.in/yaml.v3"
+import (
+	"fmt"
+	"path/filepath"
+
+	"github.com/jcombee/devenv/internal/store"
+	"gopkg.in/yaml.v3"
+)
 
 type Settings struct {
-	DefaultType string `yaml:"default_type"`
+	DefaultType string         `yaml:"default_type"`
+	Ports       map[string]int `yaml:"ports,omitempty"`
+}
+
+// ReadSettings loads ~/.dev.env/settings.yaml.
+func ReadSettings() (*Settings, error) {
+	var s Settings
+	if err := store.Read(filepath.Join(Dir(), "settings.yaml"), &s); err != nil {
+		return nil, fmt.Errorf("read settings.yaml: %w", err)
+	}
+	return &s, nil
 }
 
 // GlobalServiceEntry is one entry in services.yaml.

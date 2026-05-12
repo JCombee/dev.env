@@ -26,7 +26,7 @@ func TestWriteShared_CreatesFile(t *testing.T) {
 	}
 	ds := global.DockerSecrets{}
 
-	if err := compose.WriteShared(svcMap, ds); err != nil {
+	if err := compose.WriteShared(svcMap, ds, nil); err != nil {
 		t.Fatalf("WriteShared: %v", err)
 	}
 
@@ -92,10 +92,10 @@ func TestWriteShared_Idempotent(t *testing.T) {
 	}
 	ds := global.DockerSecrets{}
 
-	if err := compose.WriteShared(svcMap, ds); err != nil {
+	if err := compose.WriteShared(svcMap, ds, nil); err != nil {
 		t.Fatal(err)
 	}
-	if err := compose.WriteShared(svcMap, ds); err != nil {
+	if err := compose.WriteShared(svcMap, ds, nil); err != nil {
 		t.Fatalf("second WriteShared: %v", err)
 	}
 }
