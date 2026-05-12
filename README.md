@@ -276,7 +276,7 @@ services:
 | Field | Required | Default | Description |
 |---|---|---|---|
 | `project` | Yes | — | Unique project identifier. Used as the database name, Redis key prefix, etc. |
-| `type` | No | — | Project type for `.env` generation. See [Supported Project Types](#supported-project-types). Required when `env: true`. |
+| `type` | No | — | Project type. Used by `dev init` for auto-detection; has no effect on `.env` generation. |
 | `env` | No | `false` | If `true`, write a `.env` file with connection strings on `dev start`. |
 | `services` | Yes | — | List of services. Can be a string (image name) or an object with `image`, `tag`, and `dedicated`. |
 
@@ -309,7 +309,36 @@ services:
       DB_PASSWORD: DATABASE_PASS
 ```
 
-Only the variables listed in `env_map` are renamed. Unenv_mapped variables are written using their canonical names. `env_map` has no effect when `env: false`.
+Only the variables listed in `env_map` are renamed. Unmapped variables are written using their canonical names. `env_map` has no effect when `env: false`.
+
+### `.env` generation
+
+When `env: true` is set, `dev start` writes a `.env` file at the project root. The file is **overwritten on every start** — treat it as a generated artifact, not a hand-edited file.
+
+DEV.ENV generates variables per service based on the declared `services` list. Each service emits its own set of canonical variables:
+
+| Service | Variables written |
+|---------|-------------------|
+| `mysql` / `mariadb` / `percona` | `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD` |
+| `postgres` | `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD` |
+| `mongo` | `MONGODB_HOST`, `MONGODB_PORT`, `MONGODB_DATABASE`, `MONGODB_USERNAME`, `MONGODB_PASSWORD`, `MONGODB_URI` |
+| `redis` | `REDIS_HOST`, `REDIS_PORT`, `REDIS_DB` |
+| `memcached` | `MEMCACHED_HOST`, `MEMCACHED_PORT` |
+| `elasticsearch` / `opensearch` | `ELASTICSEARCH_HOST`, `ELASTICSEARCH_INDEX` |
+| `meilisearch` | `MEILISEARCH_HOST`, `MEILISEARCH_KEY`, `MEILISEARCH_INDEX` |
+| `typesense` | `TYPESENSE_HOST`, `TYPESENSE_PORT`, `TYPESENSE_PROTOCOL`, `TYPESENSE_API_KEY`, `TYPESENSE_COLLECTION` |
+| `solr` | `SOLR_HOST`, `SOLR_PORT`, `SOLR_CORE` |
+| `cassandra` | `CASSANDRA_HOST`, `CASSANDRA_PORT`, `CASSANDRA_KEYSPACE` |
+| `rabbitmq` | `RABBITMQ_HOST`, `RABBITMQ_PORT`, `RABBITMQ_VHOST`, `RABBITMQ_USERNAME`, `RABBITMQ_PASSWORD` |
+| `kafka` | `KAFKA_BROKERS`, `KAFKA_TOPIC_PREFIX` |
+| `minio` | `MINIO_ENDPOINT`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, `MINIO_BUCKET`, `MINIO_USE_SSL` |
+| `soketi` | `PUSHER_HOST`, `PUSHER_PORT`, `PUSHER_SCHEME`, `PUSHER_APP_ID`, `PUSHER_APP_KEY`, `PUSHER_APP_SECRET` |
+| `reverb` | `REVERB_HOST`, `REVERB_PORT`, `REVERB_SCHEME`, `REVERB_APP_ID`, `REVERB_APP_KEY`, `REVERB_APP_SECRET` |
+| `mailpit` / `mailhog` | `MAIL_HOST`, `MAIL_PORT`, `MAIL_MAILER` |
+
+Ports in the `.env` file always reflect the resolved host port (see [Port Allocation](#port-allocation)). Database names, indices, vhosts, and buckets all use the project name. Redis DB index is a unique integer (0–15) assigned per project.
+
+Credentials (passwords, API keys, app secrets) are generated once on first start and reused on every subsequent run — connection strings stay stable across restarts.
 
 ### Local overrides (`.dev.env.local.yaml`)
 
@@ -328,6 +357,7 @@ Add to `.gitignore`:
 
 ```
 .dev.env.local.yaml
+.env
 ```
 
 **Project name collision.** When `dev start` detects that the `project:` name is already registered by a different project at a different path, it prompts:
@@ -840,9 +870,11 @@ Answering yes saves the acknowledgement to the project's state file (`~/.dev.env
 
 ## Supported Project Types
 
-| Type | Detection | Generated `.env` variables |
-|---|---|---|
-| `laravel` | `composer.json` with `laravel/framework` | `DB_*`, `REDIS_*`, `MAIL_*` |
-| `node` | `package.json` | `DATABASE_URL`, `REDIS_URL` |
+Project type is used by `dev init` for auto-detection only — it does not affect which `.env` variables are generated. Variables are always determined by the declared `services` list.
 
-> More types and services are planned. Detection logic and `.env` templates are extensible.
+| Type | Detection |
+|---|---|
+| `laravel` | `composer.json` with `laravel/framework` |
+| `node` | `package.json` |
+
+> More types are planned. Detection logic is extensible.
