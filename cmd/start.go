@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/charmbracelet/huh"
 	"github.com/jcombee/devenv/internal/compose"
@@ -189,10 +190,39 @@ func runStart(runner compose.Runner) error {
 				allVars[k] = v
 			}
 		}
-		if err := envfile.Write(filepath.Join(cwd, ".env"), allVars); err != nil {
-			return fmt.Errorf("write .env: %w", err)
+
+		envPath := filepath.Join(cwd, ".env")
+		existing, parseErr := envfile.ParseEnv(envPath)
+
+		if os.IsNotExist(parseErr) {
+			if err := envfile.Write(envPath, allVars); err != nil {
+				return fmt.Errorf("write .env: %w", err)
+			}
+			fmt.Println("✓ .env written")
+		} else if parseErr != nil {
+			return fmt.Errorf("read .env: %w", parseErr)
+		} else {
+			newKeys, changedKeys := envfile.Diff(allVars, existing)
+			userVars := envfile.UserVars(allVars, existing)
+
+			if len(newKeys) == 0 && len(changedKeys) == 0 {
+				fmt.Println("✓ .env up to date")
+			} else {
+				envfile.PrintDiff(newKeys, changedKeys, allVars, existing)
+				update, err := confirmPrompt("Update .env file?")
+				if err != nil {
+					return err
+				}
+				if update {
+					if err := envfile.WriteMerged(envPath, allVars, userVars); err != nil {
+						return fmt.Errorf("write .env: %w", err)
+					}
+					fmt.Println("✓ .env updated")
+				} else {
+					fmt.Println("~ .env skipped")
+				}
+			}
 		}
-		fmt.Println("✓ .env written")
 	}
 
 	if err := project.SaveState(cfg.Project, state); err != nil {
@@ -254,4 +284,22 @@ func loadServicesFile() (*global.Services, error) {
 func saveServicesFile(svcFile *global.Services) error {
 	svcPath := filepath.Join(global.Dir(), "services.yaml")
 	return store.Write(svcPath, svcFile)
+}
+
+// confirmPrompt asks a yes/no question. Uses huh in a real terminal;
+// falls back to reading a line from stdin when not connected to a TTY.
+func confirmPrompt(title string) (bool, error) {
+	fi, err := os.Stdin.Stat()
+	isTTY := err == nil && (fi.Mode()&os.ModeCharDevice) != 0
+	if !isTTY {
+		var line string
+		fmt.Scanln(&line)
+		line = strings.ToLower(strings.TrimSpace(line))
+		return line == "y" || line == "yes", nil
+	}
+	var v bool
+	if err := huh.NewConfirm().Title(title).Value(&v).Run(); err != nil {
+		return false, err
+	}
+	return v, nil
 }
