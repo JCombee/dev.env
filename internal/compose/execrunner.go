@@ -39,6 +39,15 @@ func (r *ExecRunner) PS(composeFile string) ([]ServiceStatus, error) {
 	return ParsePS(out)
 }
 
+func (r *ExecRunner) Exec(composeFile, service string, args []string) error {
+	cmdArgs := append([]string{"compose", "-f", composeFile, "exec", service}, args...)
+	cmd := exec.Command("docker", cmdArgs...)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
 // ParsePS handles both JSON array and JSONL output from `docker compose ps`.
 // Exported for testing.
 func ParsePS(data []byte) ([]ServiceStatus, error) {

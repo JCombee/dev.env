@@ -6,6 +6,7 @@ type Runner interface {
 	Up(composeFile string, services ...string) error
 	Stop(composeFile string, services ...string) error
 	PS(composeFile string) ([]ServiceStatus, error)
+	Exec(composeFile, service string, args []string) error
 }
 
 type ServiceStatus struct {

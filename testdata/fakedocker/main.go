@@ -143,6 +143,9 @@ func main() {
 		data, _ := json.Marshal(rows)
 		fmt.Println(string(data))
 
+	case "exec":
+		// Interactive exec — just log the call and exit successfully.
+
 	default:
 		fmt.Fprintf(os.Stderr, "fakedocker: unknown subcommand %q\n", subcommand)
 		os.Exit(1)
