@@ -6,31 +6,37 @@ import (
 )
 
 // BuildArgs returns the command arguments to run inside the container for the
-// given image, with credentials and project context pre-filled.
-func BuildArgs(image, composeName string, ds global.DockerSecrets, ps project.Secrets, projectName string) []string {
+// given image, with credentials and project context pre-filled. Any extra
+// arguments are appended after the pre-filled ones.
+func BuildArgs(image, composeName string, ds global.DockerSecrets, ps project.Secrets, projectName string, extra []string) []string {
 	creds := ds[composeName]
 
+	var base []string
 	switch image {
 	case "mysql", "mariadb", "percona":
 		pass := creds["root_password"]
-		return []string{"mysql", "-u", "root", "-p" + pass, projectName}
+		base = []string{"mysql", "-u", "root", "-p" + pass, projectName}
 
 	case "postgres":
 		pass := creds["root_password"]
-		return []string{"env", "PGPASSWORD=" + pass, "psql", "-U", "postgres", "-d", projectName}
+		base = []string{"env", "PGPASSWORD=" + pass, "psql", "-U", "postgres", "-d", projectName}
 
 	case "mongo":
 		pass := creds["root_password"]
-		return []string{"mongosh", "--username", "root", "--password", pass}
+		base = []string{"mongosh", "--username", "root", "--password", pass}
 
 	case "redis":
 		if ps["redis"] != nil {
 			if idx := ps["redis"]["db_index"]; idx != "" {
-				return []string{"redis-cli", "-n", idx}
+				base = []string{"redis-cli", "-n", idx}
+				break
 			}
 		}
-		return []string{"redis-cli"}
+		base = []string{"redis-cli"}
+
+	default:
+		base = []string{"bash"}
 	}
 
-	return []string{"bash"}
+	return append(base, extra...)
 }

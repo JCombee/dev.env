@@ -16,14 +16,14 @@ import (
 )
 
 var execCmd = &cobra.Command{
-	Use:   "exec [service]",
-	Short: "Open an interactive session inside a running container",
-	Args:  cobra.MaximumNArgs(1),
+	Use:                "exec [service] [flags...]",
+	Short:              "Open an interactive session inside a running container",
+	DisableFlagParsing: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) == 0 {
 			return runExecList()
 		}
-		return runExec(compose.NewExecRunner(), args[0])
+		return runExec(compose.NewExecRunner(), args[0], args[1:])
 	},
 }
 
@@ -63,7 +63,7 @@ func runExecList() error {
 	return nil
 }
 
-func runExec(runner compose.Runner, image string) error {
+func runExec(runner compose.Runner, image string, extra []string) error {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return err
@@ -107,7 +107,7 @@ func runExec(runner compose.Runner, image string) error {
 		return fmt.Errorf("load project secrets: %w", err)
 	}
 
-	args := devexec.BuildArgs(image, composeName, ds, ps, cfg.Project)
+	args := devexec.BuildArgs(image, composeName, ds, ps, cfg.Project, extra)
 	return runner.Exec(composeFile, composeName, args)
 }
 
