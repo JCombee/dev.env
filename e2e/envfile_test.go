@@ -200,3 +200,95 @@ services:
 		t.Errorf("expected .env mention in output, got: %s", out)
 	}
 }
+
+func TestE2E_Env_NoDiffSkipsWizard(t *testing.T) {
+	h := NewHarness(t)
+	h.MustRun("setup")
+
+	proj := filepath.Join(h.Home, "myproject")
+	writeDevConfig(t, proj, `project: myproject
+type: generic
+env: true
+services:
+  - mysql
+`)
+
+	// First run: creates .env.
+	h.MustRunFrom(proj, "start")
+
+	// Second run: same config, nothing changed — should print "up to date".
+	out, _ := h.MustRunFrom(proj, "start")
+	if !strings.Contains(out, "up to date") {
+		t.Errorf("expected 'up to date' on second run with no changes, got: %s", out)
+	}
+}
+
+func TestE2E_Env_UserVarsPreservedOnUpdate(t *testing.T) {
+	h := NewHarness(t)
+	h.MustRun("setup")
+
+	proj := filepath.Join(h.Home, "myproject")
+	writeDevConfig(t, proj, `project: myproject
+type: generic
+env: true
+services:
+  - mysql
+`)
+
+	// Write a .env with a user var before dev start.
+	envPath := filepath.Join(proj, ".env")
+	if err := os.WriteFile(envPath, []byte("APP_KEY=base64:abc123\nDB_PORT=9999\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Confirm update (DB_PORT will change from 9999 → computed).
+	out, _, _ := h.RunFromWithInput(proj, "y\n", "start")
+	_ = out
+
+	data, err := os.ReadFile(envPath)
+	if err != nil {
+		t.Fatalf(".env not found after update: %v", err)
+	}
+	content := string(data)
+
+	// User var must survive.
+	if !strings.Contains(content, "APP_KEY=base64:abc123") {
+		t.Errorf("user var APP_KEY not preserved\n%s", content)
+	}
+	// Dev var must be updated.
+	if !strings.Contains(content, "DB_HOST=127.0.0.1") {
+		t.Errorf("dev var DB_HOST missing after update\n%s", content)
+	}
+}
+
+func TestE2E_Env_DeclineSkipsWrite(t *testing.T) {
+	h := NewHarness(t)
+	h.MustRun("setup")
+
+	proj := filepath.Join(h.Home, "myproject")
+	writeDevConfig(t, proj, `project: myproject
+type: generic
+env: true
+services:
+  - mysql
+`)
+
+	// Existing .env with a different port — will trigger diff.
+	envPath := filepath.Join(proj, ".env")
+	original := "# custom\nDB_PORT=9999\n"
+	if err := os.WriteFile(envPath, []byte(original), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Decline the update.
+	h.RunFromWithInput(proj, "n\n", "start")
+
+	data, err := os.ReadFile(envPath)
+	if err != nil {
+		t.Fatalf(".env not found: %v", err)
+	}
+	// File should be unchanged.
+	if string(data) != original {
+		t.Errorf(".env was modified despite declining\ngot:\n%s\nwant:\n%s", string(data), original)
+	}
+}

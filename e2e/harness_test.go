@@ -115,6 +115,22 @@ func (h *Harness) MustRunFrom(dir string, args ...string) (stdout, stderr string
 	return out, errOut
 }
 
+// RunFromWithInput executes `dev <args>` from dir with the given string piped to stdin.
+func (h *Harness) RunFromWithInput(dir, input string, args ...string) (stdout, stderr string, err error) {
+	h.t.Helper()
+	cmd := exec.Command(devBin, args...)
+	cmd.Dir = dir
+	cmd.Env = h.env()
+	cmd.Stdin = strings.NewReader(input)
+
+	var outBuf, errBuf strings.Builder
+	cmd.Stdout = &outBuf
+	cmd.Stderr = &errBuf
+
+	err = cmd.Run()
+	return outBuf.String(), errBuf.String(), err
+}
+
 // DockerCalls returns all recorded fake docker call argument lists.
 func (h *Harness) DockerCalls() [][]string {
 	h.t.Helper()
