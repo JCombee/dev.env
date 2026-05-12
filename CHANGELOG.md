@@ -1,4 +1,17 @@
 # Changelog
+## [0.5.0] - 2026-05-12
+
+### Bug Fixes
+
+- Remove invalid abbrev_length field from goreleaser changelog config ([4d58f26](https://github.com/JCombee/dev.env/commit/4d58f268a5a13ed81e8301c4434d3e54c4e230c2))
+- Rebase CHANGELOG commit onto main before push to avoid non-fast-forward ([3dd95db](https://github.com/JCombee/dev.env/commit/3dd95db536be11165da7f506ab67ab9bd0a56375))
+
+### New Features
+
+- Implement port allocation for containers ([bee1d43](https://github.com/JCombee/dev.env/commit/bee1d438eebc54976939c089fb81d8db6b13e73d))
+- Implement .env file generation from running services ([c3df673](https://github.com/JCombee/dev.env/commit/c3df6739bc1878379207e59a7da40019c13f832b))
+- Add .env wizard with diff and confirmation for existing files ([46e65b0](https://github.com/JCombee/dev.env/commit/46e65b0c74025726875f00fc50af16cce0da7a1e))
+
 ## [0.4.0] - 2026-04-27
 
 ### Bug Fixes
