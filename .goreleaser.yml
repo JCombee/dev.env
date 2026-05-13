@@ -31,8 +31,6 @@ checksum:
 
 changelog:
   use: git-cliff
-  git-cliff:
-    config: cliff.toml
 
 release:
   draft: true
