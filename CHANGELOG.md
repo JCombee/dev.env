@@ -1,4 +1,10 @@
 # Changelog
+## [0.6.5] - 2026-05-13
+
+### Bug Fixes
+
+- Check error return from fmt.Scanln in confirmPrompt ([5b1a498](https://github.com/JCombee/dev.env/commit/5b1a4983cb5afe15a5ada03f501b04cf202aca20))
+
 ## [0.6.4] - 2026-05-13
 
 ### Bug Fixes
