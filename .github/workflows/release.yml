@@ -23,6 +23,13 @@ jobs:
           go-version-file: go.mod
           cache: true
 
+      - uses: goreleaser/goreleaser-action@v6
+        with:
+          version: latest
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Generate CHANGELOG.md
         uses: orhun/git-cliff-action@v4
         with:
@@ -45,10 +52,3 @@ jobs:
             git pull --rebase origin main
             git push origin HEAD:main
           fi
-
-      - uses: goreleaser/goreleaser-action@v6
-        with:
-          version: latest
-          args: release --clean
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
