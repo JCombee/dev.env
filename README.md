@@ -45,13 +45,21 @@ Written in Go. Ships as a single binary with no runtime dependencies.
 #### Linux / macOS
 
 ```sh
-curl -sSL https://get.devenv.sh | sh
+VERSION=$(curl -s https://api.github.com/repos/JCombee/dev.env/releases/latest | grep '"tag_name"' | cut -d'"' -f4) && \
+OS=$(uname -s | tr '[:upper:]' '[:lower:]') && \
+ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/') && \
+curl -sSL "https://github.com/JCombee/dev.env/releases/download/${VERSION}/dev_${VERSION#v}_${OS}_${ARCH}.tar.gz" | tar -xz && \
+sudo mv dev /usr/local/bin/
 ```
 
-#### Windows
+#### Windows (PowerShell)
 
-```sh
-# TODO
+```powershell
+$release = Invoke-RestMethod https://api.github.com/repos/JCombee/dev.env/releases/latest
+$asset = $release.assets | Where-Object { $_.name -like "*Windows_x86_64.zip" }
+Invoke-WebRequest $asset.browser_download_url -OutFile dev.zip
+Expand-Archive dev.zip -DestinationPath $env:LOCALAPPDATA\dev
+$env:PATH += ";$env:LOCALAPPDATA\dev"
 ```
 
 ## Usage
