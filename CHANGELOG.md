@@ -1,4 +1,39 @@
 # Changelog
+## [0.6.4] - 2026-05-13
+
+### Bug Fixes
+
+- Use github native changelog in goreleaser ([aa241d9](https://github.com/JCombee/dev.env/commit/aa241d97c6d2d900f22145f11c3088bdc7ead4e5))
+
+## [0.6.3] - 2026-05-13
+
+### Bug Fixes
+
+- Skip goreleaser changelog, use git-cliff output only ([8ef43c1](https://github.com/JCombee/dev.env/commit/8ef43c1c0e9967e895068fd13ffcab93be053ca6))
+
+## [0.6.2] - 2026-05-13
+
+### Bug Fixes
+
+- Remove unsupported git-cliff sub-config from goreleaser changelog ([de09bfc](https://github.com/JCombee/dev.env/commit/de09bfc680ebdbd547f6bae040a90be7fb67cf0d))
+
+## [0.6.1] - 2026-05-13
+
+### Bug Fixes
+
+- Use git-cliff changelog provider in goreleaser v2 ([ea906a9](https://github.com/JCombee/dev.env/commit/ea906a9bb30cf8ac4224c7145a4755d7477387e7))
+
+## [0.6.0] - 2026-05-13
+
+### Bug Fixes
+
+- Run goreleaser before changelog commit to avoid HEAD/tag mismatch ([6da18f5](https://github.com/JCombee/dev.env/commit/6da18f54df4c7fb580a22da6bffe7a47d5c88259))
+
+### New Features
+
+- Add dev exec command for interactive container sessions ([12739cc](https://github.com/JCombee/dev.env/commit/12739cca73dd906caf66b4e4e2038a854c44dcd4))
+- Pass extra flags through dev exec to inner command ([0fb5968](https://github.com/JCombee/dev.env/commit/0fb5968a15c2068a4dffe04100ed0b527dd6505d))
+
 ## [0.5.0] - 2026-05-12
 
 ### Bug Fixes
