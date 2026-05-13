@@ -293,7 +293,9 @@ func confirmPrompt(title string) (bool, error) {
 	isTTY := err == nil && (fi.Mode()&os.ModeCharDevice) != 0
 	if !isTTY {
 		var line string
-		fmt.Scanln(&line)
+		if _, err := fmt.Scanln(&line); err != nil {
+			return false, err
+		}
 		line = strings.ToLower(strings.TrimSpace(line))
 		return line == "y" || line == "yes", nil
 	}
