@@ -123,6 +123,22 @@ func runStart(runner compose.Runner) error {
 			}
 			fmt.Printf("✓ %s:%s  started (shared)\n", entry.Image, tag)
 		}
+		for _, svcEntry := range cfg.Services {
+			if svcEntry.Dedicated {
+				continue
+			}
+			tag := svcEntry.Tag
+			if tag == "" {
+				tag = "latest"
+			}
+			composeName := compose.ServiceName(svcEntry.Image, tag)
+			if err := compose.ProvisionDB(sharedComposePath, composeName, svcEntry.Image, cfg.Project, dockerSecrets); err != nil {
+				return fmt.Errorf("provision %s: %w", svcEntry.Image, err)
+			}
+			if isDBImage(svcEntry.Image) {
+				fmt.Printf("✓ database %q ready\n", cfg.Project)
+			}
+		}
 	}
 
 	// Start dedicated services.
@@ -148,6 +164,13 @@ func runStart(runner compose.Runner) error {
 				tag = "latest"
 			}
 			fmt.Printf("✓ %s:%s  started (dedicated)\n", e.Image, tag)
+			dedicatedComposeName := cfg.Project + "-" + compose.ServiceName(e.Image, tag)
+			if err := compose.ProvisionDB(dedicatedComposePath, dedicatedComposeName, e.Image, cfg.Project, dockerSecrets); err != nil {
+				return fmt.Errorf("provision %s (dedicated): %w", e.Image, err)
+			}
+			if isDBImage(e.Image) {
+				fmt.Printf("✓ database %q ready\n", cfg.Project)
+			}
 		}
 	}
 
@@ -284,6 +307,14 @@ func loadServicesFile() (*global.Services, error) {
 func saveServicesFile(svcFile *global.Services) error {
 	svcPath := filepath.Join(global.Dir(), "services.yaml")
 	return store.Write(svcPath, svcFile)
+}
+
+func isDBImage(image string) bool {
+	switch image {
+	case "mysql", "mariadb", "percona", "postgres":
+		return true
+	}
+	return false
 }
 
 // confirmPrompt asks a yes/no question. Uses huh in a real terminal;

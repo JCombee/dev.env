@@ -236,3 +236,52 @@ func TestE2E_Start_NoConfig_ExitsOne(t *testing.T) {
 	_, _, err := h.RunFrom(proj, "start")
 	h.AssertExitCode(err, 1)
 }
+
+func TestE2E_Start_MySQL_ProvisionDB(t *testing.T) {
+	h := NewHarness(t)
+	h.MustRun("setup")
+
+	proj := filepath.Join(h.Home, "myproject")
+	writeDevConfig(t, proj, `project: myproject
+type: generic
+services:
+  - mysql
+`)
+
+	out, _ := h.MustRunFrom(proj, "start")
+	if !strings.Contains(out, `database "myproject" ready`) {
+		t.Errorf("expected database ready message, got: %s", out)
+	}
+
+	calls := h.DockerCalls()
+	foundExec := false
+	for _, c := range calls {
+		if len(c) >= 2 && c[0] == "compose" {
+			for _, a := range c {
+				if a == "exec" {
+					foundExec = true
+				}
+			}
+		}
+	}
+	if !foundExec {
+		t.Errorf("expected docker compose exec call for DB provisioning, got calls: %v", calls)
+	}
+}
+
+func TestE2E_Start_Postgres_ProvisionDB(t *testing.T) {
+	h := NewHarness(t)
+	h.MustRun("setup")
+
+	proj := filepath.Join(h.Home, "pgproject")
+	writeDevConfig(t, proj, `project: pgproject
+type: generic
+services:
+  - postgres
+`)
+
+	out, _ := h.MustRunFrom(proj, "start")
+	if !strings.Contains(out, `database "pgproject" ready`) {
+		t.Errorf("expected database ready message, got: %s", out)
+	}
+}
