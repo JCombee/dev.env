@@ -1,4 +1,11 @@
 # Changelog
+## [0.7.0] - 2026-05-21
+
+### New Features
+
+- Provision project database after container start ([a1752e6](https://github.com/JCombee/dev.env/commit/a1752e62a21bf7ae6784b0c868ffbf07f40308ba))
+- Add dev db import command ([ce7fcb6](https://github.com/JCombee/dev.env/commit/ce7fcb65ea870bd1982df6aac366392239d3ac98))
+
 ## [0.6.5] - 2026-05-13
 
 ### Bug Fixes
