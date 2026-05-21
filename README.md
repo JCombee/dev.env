@@ -198,6 +198,43 @@ dev exec postgres    # opens psql connected to the project database
 
 The project must be running (`dev start`) before using `dev exec`.
 
+### db import
+
+Import a SQL dump file into the project's database inside the running container. No local database client required.
+
+```sh
+dev db import <file>
+```
+
+`<file>` is the path to a `.sql` file (absolute or relative to the current directory).
+
+**Examples:**
+
+```sh
+dev db import dump.sql
+dev db import /backups/prod-2026-05-21.sql
+```
+
+**Supported databases:** `mysql`, `mariadb`, `percona`, `postgres`.
+
+The file is streamed directly into the container via `docker compose exec`. The project's provisioned database (named after the project) is the import target. Credentials are read from `~/.dev.env/docker/secrets.yaml` — no extra configuration needed.
+
+The project must be running (`dev start`) before importing.
+
+```
+Importing dump.sql into "my-project" (mysql:8.0)...
+✓ Import complete
+```
+
+**Error cases:**
+
+| Situation | Error |
+|---|---|
+| No supported DB service in config | `no supported database service configured` |
+| Multiple DB services configured | `multiple database services configured — specify one with --service` |
+| File not found | `file "dump.sql" not found` |
+| Container not running | `container mysql-8-0 is not running — run \`dev start\` first` |
+
 ### config
 
 Read and write project configuration without editing `.dev.env.yaml` directly.
