@@ -1100,6 +1100,79 @@ Any Docker Hub image can be used. When `dev start` encounters an unsupported ima
 
 Answering yes saves the acknowledgement to the project's state file (`~/.dev.env/projects/<name>/state.json`) so you are not prompted again for that project. The container then runs shared like any other service — no isolation, no provisioning. If you need isolation, use `dedicated: true` explicitly.
 
+## Global Apps
+
+Global apps are containers that belong to your machine rather than to a project. They are enabled once with [`dev app enable`](#app), stay up independently of any project, and are never declared in a `.dev.env.yaml`.
+
+Differences from services:
+
+| | Services | Global apps |
+|---|---|---|
+| Declared in | `.dev.env.yaml` per project | nowhere — enabled by CLI |
+| Lifecycle | started/stopped by `dev start` / `dev stop`, reference counted | always up while enabled |
+| Compose file | `~/.dev.env/docker/docker-compose.yml` | `~/.dev.env/apps/docker-compose.yml` |
+| Host port | computed from `image:tag` | fixed default, overridable in `apps.yaml` |
+| Project isolation | databases, users, indices per project | none — one instance for everything |
+| `.env` generation | yes, when `env: true` | no — reach the app over its host port |
+
+A project reaches a global app over the host: from your machine `http://127.0.0.1:<port>`, and from inside another container `http://host.docker.internal:<port>`. Global apps do not join the project services network.
+
+### LiteLLM
+
+[GitHub](https://github.com/BerriAI/litellm) · [Documentation](https://docs.litellm.ai/)
+
+An OpenAI-compatible proxy in front of every LLM provider you use — OpenAI, Anthropic, Ollama, Gemini, Groq, OpenRouter, Azure, Bedrock, vLLM, and [100+ others](https://docs.litellm.ai/docs/providers). Point your projects at one base URL and one key; swap models, track spend, and issue per-project virtual keys.
+
+```sh
+dev app enable litellm
+```
+
+**No configuration files.** Everything — providers, models, API keys, virtual keys, budgets — is managed in the admin UI at `http://127.0.0.1:4000/ui` and stored in LiteLLM's own database. DEV.ENV only runs the containers and wires up the database.
+
+| Container | Image | Host port | Purpose |
+|---|---|---|---|
+| `litellm` | `ghcr.io/berriai/litellm:main-stable` | `4000` | Proxy + admin UI |
+| `litellm-db` | `postgres:16` | *(not published)* | Models, keys, spend logs |
+
+The Postgres container is internal to the app — it is not published to the host and is unrelated to any project's `postgres` service. Its data lives in the `litellm-db-data` docker volume, which survives `dev app disable`.
+
+Database provisioning is automatic and needs no `dev`-side work: the Postgres image creates the `litellm` database and user from its environment on first boot, and the LiteLLM container runs its own schema migrations against `DATABASE_URL` on startup. The proxy waits for Postgres to pass a healthcheck (`depends_on: service_healthy`) before it starts, so a first `dev app enable` on a cold volume is safe.
+
+**Endpoints**
+
+| URL | What |
+|---|---|
+| `http://127.0.0.1:4000` | OpenAI-compatible API base URL |
+| `http://127.0.0.1:4000/ui` | Admin UI — virtual keys, spend, model management |
+| `http://127.0.0.1:4000/health` | Health check |
+
+**Generated credentials** (in `~/.dev.env/docker/secrets.yaml`, shown by `dev app info litellm`)
+
+| Secret | Description |
+|---|---|
+| `litellm.master_key` | `sk-`-prefixed admin key. Use it as your API key, to log into the UI, and to mint virtual keys. |
+| `litellm.salt_key` | Encrypts provider API keys stored in the database. Generated once; changing it invalidates every stored key. |
+| `litellm.ui_password` | Admin UI password. Username is `admin`. |
+| `litellm-db.root_password` | Postgres password. Internal — you should not need it. |
+
+**Adding models**
+
+Open `http://127.0.0.1:4000/ui`, log in, and add a model under *Models → Add Model*: pick the provider, paste your API key, name the model. It is saved encrypted in Postgres and is live immediately — no restart, no file to edit.
+
+For a local Ollama, add an OpenAI-compatible provider with base URL `http://host.docker.internal:11434` and any placeholder key — Ollama runs on your host, not in the LiteLLM container.
+
+DEV.ENV never sees or stores your provider API keys.
+
+**Using it from a project**
+
+```
+OPENAI_API_BASE=http://127.0.0.1:4000        # from the host
+OPENAI_API_BASE=http://host.docker.internal:4000   # from inside a container
+OPENAI_API_KEY=sk-...                        # master key or a virtual key
+```
+
+DEV.ENV does not write these into your project's `.env` — global apps are deliberately not tied to projects.
+
 ## Supported Project Types
 
 Project type is used by `dev init` for auto-detection only — it does not affect which `.env` variables are generated. Variables are always determined by the declared `services` list.
