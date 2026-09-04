@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 80" role="img" aria-label="dev.env">
+  
+  <g transform="translate(0,8)">
+    <rect x="8" y="6" width="48" height="10" rx="2" fill="none" stroke="#0E1116" stroke-width="2"></rect>
+    <rect x="8" y="18" width="48" height="10" rx="2" fill="#C6F432" stroke="#0E1116" stroke-width="2"></rect>
+    <rect x="8" y="30" width="48" height="10" rx="2" fill="none" stroke="#0E1116" stroke-width="2"></rect>
+    <rect x="8" y="42" width="48" height="10" rx="2" fill="none" stroke="#0E1116" stroke-width="2"></rect>
+    <circle cx="50" cy="11" r="1.5" fill="#0E1116"></circle>
+    <circle cx="50" cy="23" r="1.5" fill="#0E1116"></circle>
+    <circle cx="50" cy="35" r="1.5" fill="#0E1116"></circle>
+    <circle cx="50" cy="47" r="1.5" fill="#0E1116"></circle>
+  </g>
+  <text x="80" y="56" class="lk-text" fill="#0E1116">dev</text>
+  <rect x="178" y="46" width="12" height="12" fill="#C6F432"></rect>
+  <text x="194" y="56" class="lk-text" fill="#0E1116">env</text>
+</svg>

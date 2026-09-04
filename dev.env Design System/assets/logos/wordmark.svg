@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 80" role="img" aria-label="dev.env">
+  
+  <text x="8" y="58" class="wm-text" fill="#0E1116">dev</text>
+  <rect x="123" y="46" width="14" height="14" fill="#C6F432"></rect>
+  <text x="142" y="58" class="wm-text" fill="#0E1116">env</text>
+</svg>

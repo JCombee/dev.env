@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>card</title>
+<link rel="stylesheet" href="../colors_and_type.css"/>
+<style>
+  html, body { margin: 0; padding: 0; background: var(--bg-1); }
+  body { padding: 24px; }
+  .card { display: flex; flex-direction: column; gap: 16px; }
+  .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .swatch { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .chip { width: 64px; height: 64px; border-radius: 4px; border: 1px solid var(--border-1); }
+  .chip-lg { width: 96px; height: 64px; border-radius: 6px; border: 1px solid var(--border-1); }
+  .chip-sm { width: 44px; height: 44px; border-radius: 4px; border: 1px solid var(--border-1); }
+  .lbl { font-family: var(--font-mono); font-size: 11px; color: var(--fg-3); letter-spacing: 0.04em; text-transform: uppercase; }
+  .val { font-family: var(--font-mono); font-size: 12px; color: var(--fg-1); }
+  .grid { display: grid; gap: 12px; }
+</style>
+</head>
+<body>
+
+  <div class="card" style="gap: 12px;">
+    <div style="font-family: var(--font-sans); font-weight: 600; font-size: 56px; letter-spacing: -0.02em; line-height: 1.05; color: var(--fg-1);">Shared dev services.</div>
+    <div style="font-family: var(--font-sans); font-weight: 600; font-size: 40px; letter-spacing: -0.015em; line-height: 1.1; color: var(--fg-1);">One pool, every project.</div>
+    <div style="font-family: var(--font-sans); font-weight: 600; font-size: 28px; line-height: 1.25; color: var(--fg-1);">Installation</div>
+    <div style="font-family: var(--font-sans); font-weight: 600; font-size: 22px; line-height: 1.25; color: var(--fg-1);">Project configuration</div>
+    <div class="lbl" style="margin-top: 4px;">IBM Plex Sans · 600 · 56 / 40 / 28 / 22</div>
+  </div></body></html>

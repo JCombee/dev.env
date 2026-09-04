@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>card</title>
+<link rel="stylesheet" href="../colors_and_type.css"/>
+<style>
+  html, body { margin: 0; padding: 0; background: var(--bg-1); }
+  body { padding: 24px; }
+  .card { display: flex; flex-direction: column; gap: 16px; }
+  .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .swatch { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .chip { width: 64px; height: 64px; border-radius: 4px; border: 1px solid var(--border-1); }
+  .chip-lg { width: 96px; height: 64px; border-radius: 6px; border: 1px solid var(--border-1); }
+  .chip-sm { width: 44px; height: 44px; border-radius: 4px; border: 1px solid var(--border-1); }
+  .lbl { font-family: var(--font-mono); font-size: 11px; color: var(--fg-3); letter-spacing: 0.04em; text-transform: uppercase; }
+  .val { font-family: var(--font-mono); font-size: 12px; color: var(--fg-1); }
+  .grid { display: grid; gap: 12px; }
+</style>
+</head>
+<body>
+
+  <div class="card" style="gap: 10px;">
+    <div style="font-family: var(--font-sans); font-size: 17px; line-height: 1.55; color: var(--fg-2); max-width: 600px;">Every project needs MySQL, Redis, Elasticsearch. The typical solution is a docker-compose.yml per project. dev.env runs one shared pool instead.</div>
+    <div style="font-family: var(--font-sans); font-size: 14px; line-height: 1.55; color: var(--fg-3); max-width: 600px;">Shared containers already running for another project are reused. Dedicated containers are always project-private and never shared.</div>
+    <div class="lbl" style="margin-top: 4px;">Plex Sans · 17/14 · 400 · 1.55</div>
+  </div></body></html>
