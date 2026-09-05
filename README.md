@@ -21,6 +21,7 @@ Written in Go. Ships as a single binary with no runtime dependencies.
 - `dev start` ensures the required containers are running, then provisions project-specific resources (database, user, index, etc.). If `env: true` is set, it also writes a `.env` file with the correct connection strings.
 - `dev stop` tracks which projects are using each container. A container only stops when no other active project depends on it.
 - Project type detection (based on files like `composer.json` or `package.json`) determines which `.env` template to use when `env: true` is set.
+- Global apps (`dev app`) run outside all of this: their own compose file, always up while enabled, untouched by `dev start` and `dev stop`.
 
 ## Features
 
@@ -31,6 +32,7 @@ Written in Go. Ships as a single binary with no runtime dependencies.
 - **Automatic provisioning.** `dev start` sets up project-scoped resources on first run (databases, users, index env_mappings, etc.).
 - **Smart stop behavior.** Containers stay running as long as another project needs them. No accidental shutdowns.
 - **Optional `.env` generation.** Set `env: true` in `.dev.env.yaml` to have DEV.ENV write a ready-to-use `.env` with correct hostnames, ports, credentials, and database names. Disabled by default.
+- **Global apps.** Run machine-wide tools like LiteLLM that belong to you, not to a project. Enable once with `dev app enable`; they stay up independently of any project's `dev start` / `dev stop`.
 - **Conflict-free port allocation.** Each `image:tag` pair gets a deterministic host port derived from the service's default port and the version tag, so multiple versions of the same service never collide. Override any port globally in `~/.dev.env/settings.yaml`.
 - **Single binary.** Install once, works globally across all your projects.
 
@@ -167,6 +169,8 @@ redis:latest             running    my-project
 elasticsearch:8.11       running    api-project (dedicated)
 ```
 
+Project services only. Global apps are shown by [`dev app list`](#app-list).
+
 ### exec
 
 Open an interactive session inside a running container for the current project, with credentials and database pre-filled.
@@ -274,6 +278,91 @@ For nested service config, use dot notation:
 dev config set services.mysql.tag 8.4
 dev config set services.mysql.env_map.DB_HOST DATABASE_HOST
 ```
+
+### app
+
+Manage **global apps** — containers that belong to your machine rather than to a project. A global app is enabled once and then stays up: `dev start` and `dev stop` in a project never touch it, and reference counting does not apply. Because the containers use `restart: unless-stopped`, they come back automatically after a reboot.
+
+Global apps live in their own compose file (`~/.dev.env/apps/docker-compose.yml`) and are never declared in any `.dev.env.yaml`.
+
+```sh
+dev app <command>
+```
+
+#### app list
+
+List all available global apps and their state.
+
+```sh
+dev app list
+```
+
+```
+┌─────────┬──────────┬──────┬──────────────────────────────────────┐
+│ APP     │ STATUS   │ PORT │ DESCRIPTION                          │
+├─────────┼──────────┼──────┼──────────────────────────────────────┤
+│ litellm │ running  │ 4000 │ LLM proxy/gateway with admin UI      │
+└─────────┴──────────┴──────┴──────────────────────────────────────┘
+```
+
+`STATUS` is `disabled` (not enabled), `running`, or `stopped` (enabled but the container is not up).
+
+#### app enable
+
+Enable an app: generate its credentials, write the apps compose file, and start it.
+
+```sh
+dev app enable litellm
+```
+
+```
+✓ litellm  started
+
+  Proxy      http://127.0.0.1:4000
+  Admin UI   http://127.0.0.1:4000/ui
+  Master key sk-a1b2c3d4...
+  UI login   admin / xK9mP2wR...
+
+  Add your models and provider API keys in the admin UI.
+```
+
+Enabling is idempotent: credentials already present in `~/.dev.env/docker/secrets.yaml` are reused, so re-running `dev app enable` on a live app is safe.
+
+#### app disable
+
+Stop the app's containers and remove it from the apps compose file.
+
+```sh
+dev app disable litellm
+```
+
+```
+✓ litellm  stopped and disabled
+```
+
+Data volumes are kept, so re-enabling later restores the app with its previous state, credentials, and everything configured in its UI. Disabling an app that is not enabled prints `~ app "litellm" is not enabled` and exits 0.
+
+#### app start / app stop
+
+Start or stop enabled apps without changing whether they are enabled. Useful after stopping a container by hand, or to restart an app.
+
+```sh
+dev app start            # start every enabled app
+dev app start litellm    # start one app
+dev app stop litellm
+```
+
+#### app info
+
+Re-print an app's URLs and generated credentials.
+
+```sh
+dev app info litellm
+```
+
+Only enabled apps have credentials; `dev app info` on a disabled app exits 1.
+
+Any `dev app` subcommand given an unknown app name lists the valid names and exits 1.
 
 ### global
 
@@ -541,13 +630,17 @@ DEV.ENV stores all global state in `~/.dev.env/`:
 ~/.dev.env/
 ├── settings.yaml              # Global user preferences
 ├── services.yaml              # Registry of all known services and their docker-compose names
+├── apps.yaml                  # Which global apps are enabled, and their port overrides
+├── apps/
+│   └── docker-compose.yml     # Managed by DEV.ENV — do not edit manually
 ├── projects/
 │   └── my-project/
 │       ├── project.yaml       # Project metadata: disk path and location of .dev.env.yaml
 │       ├── state.yaml         # Runtime state: running status, active services, acknowledged images
 │       └── secrets.yaml       # Generated credentials: passwords, API keys, app secrets
 └── docker/
-    └── docker-compose.yml     # Managed by DEV.ENV — do not edit manually
+    ├── docker-compose.yml     # Managed by DEV.ENV — do not edit manually
+    └── secrets.yaml           # Container-level credentials, including those of global apps
 ```
 
 ### `settings.yaml`
@@ -582,6 +675,25 @@ services:
 ```
 
 When `dev start` encounters an `image:tag` pair not yet registered, it adds an entry to `services.yaml` and regenerates `docker/docker-compose.yml`. Docker-compose service names map directly to the keys in this file.
+
+### `apps.yaml`
+
+Records which [global apps](#global-apps) are enabled. Written by `dev app enable` / `dev app disable`.
+
+```yaml
+apps:
+  litellm:
+    enabled: true
+    port: 4000       # optional — overrides the app's default host port
+```
+
+An app absent from this file is disabled. A missing or empty `apps.yaml` means no apps are enabled.
+
+Unlike project services, app ports are **not** computed from the version tag — each app declares a fixed default port, and `port` here is the only override.
+
+### `apps/docker-compose.yml`
+
+Generated and maintained by DEV.ENV, rebuilt on every `dev app enable` / `dev app disable`. Contains only the containers of currently enabled apps. Separate from `docker/docker-compose.yml` so that project lifecycle commands can never start or stop an app. Not intended for manual editing.
 
 ### `projects/<name>/project.yaml`
 
@@ -632,6 +744,21 @@ soketi:
 ### `docker/docker-compose.yml`
 
 Generated and maintained by DEV.ENV. Rebuilt whenever `services.yaml` gains a new entry. Service names in this file match the keys in `services.yaml`. Not intended for manual editing.
+
+### `docker/secrets.yaml`
+
+Container-level credentials, keyed by docker-compose service name. Generated once and never overwritten, so passwords stay stable across restarts. Global apps store their credentials here too.
+
+```yaml
+mysql-8-0:
+  root_password: "9f3a..."
+litellm:
+  master_key: "sk-a1b2..."
+  salt_key: "7d1e..."
+  ui_password: "xK9mP2wR..."
+litellm-db:
+  root_password: "c04f..."
+```
 
 ## Supported Services
 
@@ -972,6 +1099,79 @@ Any Docker Hub image can be used. When `dev start` encounters an unsupported ima
 ```
 
 Answering yes saves the acknowledgement to the project's state file (`~/.dev.env/projects/<name>/state.json`) so you are not prompted again for that project. The container then runs shared like any other service — no isolation, no provisioning. If you need isolation, use `dedicated: true` explicitly.
+
+## Global Apps
+
+Global apps are containers that belong to your machine rather than to a project. They are enabled once with [`dev app enable`](#app), stay up independently of any project, and are never declared in a `.dev.env.yaml`.
+
+Differences from services:
+
+| | Services | Global apps |
+|---|---|---|
+| Declared in | `.dev.env.yaml` per project | nowhere — enabled by CLI |
+| Lifecycle | started/stopped by `dev start` / `dev stop`, reference counted | always up while enabled |
+| Compose file | `~/.dev.env/docker/docker-compose.yml` | `~/.dev.env/apps/docker-compose.yml` |
+| Host port | computed from `image:tag` | fixed default, overridable in `apps.yaml` |
+| Project isolation | databases, users, indices per project | none — one instance for everything |
+| `.env` generation | yes, when `env: true` | no — reach the app over its host port |
+
+A project reaches a global app over the host: from your machine `http://127.0.0.1:<port>`, and from inside another container `http://host.docker.internal:<port>`. Global apps do not join the project services network.
+
+### LiteLLM
+
+[GitHub](https://github.com/BerriAI/litellm) · [Documentation](https://docs.litellm.ai/)
+
+An OpenAI-compatible proxy in front of every LLM provider you use — OpenAI, Anthropic, Ollama, Gemini, Groq, OpenRouter, Azure, Bedrock, vLLM, and [100+ others](https://docs.litellm.ai/docs/providers). Point your projects at one base URL and one key; swap models, track spend, and issue per-project virtual keys.
+
+```sh
+dev app enable litellm
+```
+
+**No configuration files.** Everything — providers, models, API keys, virtual keys, budgets — is managed in the admin UI at `http://127.0.0.1:4000/ui` and stored in LiteLLM's own database. DEV.ENV only runs the containers and wires up the database.
+
+| Container | Image | Host port | Purpose |
+|---|---|---|---|
+| `litellm` | `ghcr.io/berriai/litellm:main-stable` | `4000` | Proxy + admin UI |
+| `litellm-db` | `postgres:16` | *(not published)* | Models, keys, spend logs |
+
+The Postgres container is internal to the app — it is not published to the host and is unrelated to any project's `postgres` service. Its data lives in the `litellm-db-data` docker volume, which survives `dev app disable`.
+
+Database provisioning is automatic and needs no `dev`-side work: the Postgres image creates the `litellm` database and user from its environment on first boot, and the LiteLLM container runs its own schema migrations against `DATABASE_URL` on startup. The proxy waits for Postgres to pass a healthcheck (`depends_on: service_healthy`) before it starts, so a first `dev app enable` on a cold volume is safe.
+
+**Endpoints**
+
+| URL | What |
+|---|---|
+| `http://127.0.0.1:4000` | OpenAI-compatible API base URL |
+| `http://127.0.0.1:4000/ui` | Admin UI — virtual keys, spend, model management |
+| `http://127.0.0.1:4000/health` | Health check |
+
+**Generated credentials** (in `~/.dev.env/docker/secrets.yaml`, shown by `dev app info litellm`)
+
+| Secret | Description |
+|---|---|
+| `litellm.master_key` | `sk-`-prefixed admin key. Use it as your API key, to log into the UI, and to mint virtual keys. |
+| `litellm.salt_key` | Encrypts provider API keys stored in the database. Generated once; changing it invalidates every stored key. |
+| `litellm.ui_password` | Admin UI password. Username is `admin`. |
+| `litellm-db.root_password` | Postgres password. Internal — you should not need it. |
+
+**Adding models**
+
+Open `http://127.0.0.1:4000/ui`, log in, and add a model under *Models → Add Model*: pick the provider, paste your API key, name the model. It is saved encrypted in Postgres and is live immediately — no restart, no file to edit.
+
+For a local Ollama, add an OpenAI-compatible provider with base URL `http://host.docker.internal:11434` and any placeholder key — Ollama runs on your host, not in the LiteLLM container.
+
+DEV.ENV never sees or stores your provider API keys.
+
+**Using it from a project**
+
+```
+OPENAI_API_BASE=http://127.0.0.1:4000        # from the host
+OPENAI_API_BASE=http://host.docker.internal:4000   # from inside a container
+OPENAI_API_KEY=sk-...                        # master key or a virtual key
+```
+
+DEV.ENV does not write these into your project's `.env` — global apps are deliberately not tied to projects.
 
 ## Supported Project Types
 

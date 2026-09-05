@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Changelog — dev.env</title>
+  <link rel="stylesheet" href="../../colors_and_type.css"/>
+  <link rel="stylesheet" href="styles.css"/>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" src="Primitives.jsx"></script>
+  <script type="text/babel" src="Header.jsx"></script>
+  <script type="text/babel" src="ChangelogEntry.jsx"></script>
+  <script type="text/babel" src="Footer.jsx"></script>
+
+  <script type="text/babel">
+    const releases = [
+      {
+        version: '0.6.5', date: '2026-05-13', latest: true,
+        sections: [
+          { label: 'bug fixes', tone: 'fix', entries: [
+            { msg: 'Check error return from fmt.Scanln in confirmPrompt', sha: '5b1a4983cb5afe15a5ada03f501b04cf202aca20' },
+          ]},
+        ],
+      },
+      {
+        version: '0.6.0', date: '2026-05-13',
+        sections: [
+          { label: 'new features', tone: 'feat', entries: [
+            { msg: 'Add dev exec command for interactive container sessions', sha: '12739cca73dd906caf66b4e4e2038a854c44dcd4' },
+            { msg: 'Pass extra flags through dev exec to inner command',    sha: '0fb5968a15c2068a4dffe04100ed0b527dd6505d' },
+          ]},
+          { label: 'bug fixes', tone: 'fix', entries: [
+            { msg: 'Run goreleaser before changelog commit to avoid HEAD/tag mismatch', sha: '6da18f54df4c7fb580a22da6bffe7a47d5c88259' },
+          ]},
+        ],
+      },
+      {
+        version: '0.5.0', date: '2026-05-12',
+        sections: [
+          { label: 'new features', tone: 'feat', entries: [
+            { msg: 'Implement port allocation for containers', sha: 'bee1d438eebc54976939c089fb81d8db6b13e73d' },
+            { msg: 'Implement .env file generation from running services', sha: 'c3df6739bc1878379207e59a7da40019c13f832b' },
+            { msg: 'Add .env wizard with diff and confirmation for existing files', sha: '46e65b0c74025726875f00fc50af16cce0da7a1e' },
+          ]},
+          { label: 'bug fixes', tone: 'fix', entries: [
+            { msg: 'Remove invalid abbrev_length field from goreleaser changelog config', sha: '4d58f268a5a13ed81e8301c4434d3e54c4e230c2' },
+          ]},
+        ],
+      },
+      {
+        version: '0.4.0', date: '2026-04-27',
+        sections: [
+          { label: 'new features', tone: 'feat', entries: [
+            { msg: 'Implement docker compose start/stop with reference counting', sha: '7d6d32ce100260997873129e00ec71505fcefaf1' },
+          ]},
+        ],
+      },
+      {
+        version: '0.3.0', date: '2026-04-26',
+        sections: [
+          { label: 'new features', tone: 'feat', entries: [
+            { msg: 'Phase 3 — global state, project registration, secrets, dev status', sha: 'babf2cc3d9e33782ccb837094784b5247e06f453' },
+          ]},
+        ],
+      },
+      {
+        version: '0.2.0', date: '2026-04-26',
+        sections: [
+          { label: 'new features', tone: 'feat', entries: [
+            { msg: 'Generate CHANGELOG.md via git-cliff on release', sha: '61b75e151fcf358720f0c9e7d66714519cc98d05' },
+            { msg: 'Phase 2 — config model, service registry, dev init, dev config', sha: '1f1846e5fcc37177681f0b5d740cd76a4116dee3' },
+          ]},
+        ],
+      },
+      {
+        version: '0.1.0', date: '2026-04-26',
+        sections: [
+          { label: 'new features', tone: 'feat', entries: [
+            { msg: 'Phase 1 skeleton, CI pipeline, and e2e test harness', sha: '3f0281267c0c45f288e060d660d3e6e8469246d0' },
+            { msg: 'Automated draft releases via GoReleaser', sha: 'fca3eb3226f72bf3c6f49d61c2e3a12660c8eace' },
+          ]},
+        ],
+      },
+    ];
+
+    function App() {
+      return (
+        <>
+          <Header page="log"/>
+          <main className="container" style={{ paddingTop: 48, paddingBottom: 96, maxWidth: 960 }}>
+            <Eyebrow>/ changelog</Eyebrow>
+            <h1 style={{ fontFamily: 'var(--font-sans)', fontWeight: 600, fontSize: 44, lineHeight: 1.05, letterSpacing: '-0.02em', color: 'var(--fg-1)', margin: '12px 0 16px' }}>
+              What changed
+            </h1>
+            <p style={{ fontSize: 16, color: 'var(--fg-2)', maxWidth: 600, margin: '0 0 48px' }}>
+              Generated from conventional-commit history by <code style={{ background: 'var(--bg-3)', border: '1px solid var(--border-1)', padding: '1px 6px', borderRadius: 3, fontFamily: 'var(--font-mono)', fontSize: '0.88em' }}>git-cliff</code> on every release.
+            </p>
+            {releases.map(r => <ChangelogEntry key={r.version} {...r}/>)}
+          </main>
+          <Footer/>
+        </>
+      );
+    }
+    ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+  </script>
+</body>
+</html>

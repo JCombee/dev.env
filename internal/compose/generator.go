@@ -14,13 +14,30 @@ import (
 
 type composeFile struct {
 	Services map[string]composeService `yaml:"services"`
+	// Volumes declares named volumes; only global apps use them.
+	Volumes map[string]struct{} `yaml:"volumes,omitempty"`
 }
 
 type composeService struct {
-	Image       string            `yaml:"image"`
-	Ports       []string          `yaml:"ports,omitempty"`
-	Environment map[string]string `yaml:"environment,omitempty"`
-	Restart     string            `yaml:"restart,omitempty"`
+	Image       string                    `yaml:"image"`
+	Ports       []string                  `yaml:"ports,omitempty"`
+	Environment map[string]string         `yaml:"environment,omitempty"`
+	Restart     string                    `yaml:"restart,omitempty"`
+	Volumes     []string                  `yaml:"volumes,omitempty"`
+	Command     []string                  `yaml:"command,omitempty"`
+	DependsOn   map[string]dependsOnEntry `yaml:"depends_on,omitempty"`
+	Healthcheck *composeHealthcheck       `yaml:"healthcheck,omitempty"`
+}
+
+type dependsOnEntry struct {
+	Condition string `yaml:"condition"`
+}
+
+type composeHealthcheck struct {
+	Test     []string `yaml:"test"`
+	Interval string   `yaml:"interval,omitempty"`
+	Timeout  string   `yaml:"timeout,omitempty"`
+	Retries  int      `yaml:"retries,omitempty"`
 }
 
 // WriteShared regenerates ~/.dev.env/docker/docker-compose.yml from the

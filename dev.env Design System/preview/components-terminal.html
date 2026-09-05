@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>card</title>
+<link rel="stylesheet" href="../colors_and_type.css"/>
+<style>
+  html, body { margin: 0; padding: 0; background: var(--bg-1); }
+  body { padding: 24px; }
+  .card { display: flex; flex-direction: column; gap: 16px; }
+  .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .swatch { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .chip { width: 64px; height: 64px; border-radius: 4px; border: 1px solid var(--border-1); }
+  .chip-lg { width: 96px; height: 64px; border-radius: 6px; border: 1px solid var(--border-1); }
+  .chip-sm { width: 44px; height: 44px; border-radius: 4px; border: 1px solid var(--border-1); }
+  .lbl { font-family: var(--font-mono); font-size: 11px; color: var(--fg-3); letter-spacing: 0.04em; text-transform: uppercase; }
+  .val { font-family: var(--font-mono); font-size: 12px; color: var(--fg-1); }
+  .grid { display: grid; gap: 12px; }
+</style>
+</head>
+<body>
+
+  <div class="card">
+    <div style="border: 1px solid var(--border-2); border-radius: 8px; overflow: hidden; max-width: 600px; box-shadow: var(--elevation-2);">
+      <div style="background: var(--bg-2); padding: 10px 14px; border-bottom: 1px solid var(--border-1); display:flex; gap:6px; align-items:center;">
+        <span style="width:10px;height:10px;border-radius:999px;background:var(--stone-300);"></span>
+        <span style="width:10px;height:10px;border-radius:999px;background:var(--stone-300);"></span>
+        <span style="width:10px;height:10px;border-radius:999px;background:var(--stone-300);"></span>
+        <span style="margin-left: 12px; font-family: var(--font-mono); font-size: 12px; color: var(--fg-3);">~/code/my-project</span>
+      </div>
+      <pre style="margin:0; padding: 14px; background: var(--bg-1); font-family: var(--font-mono); font-size: 13px; line-height: 1.65; color: var(--fg-1); border-radius:0;">$ dev start
+<span style="color: var(--color-lime-deep);">✓</span> mysql:8.0              already running (shared)
+<span style="color: var(--color-lime-deep);">✓</span> redis:latest           started (shared)
+<span style="color: var(--color-lime-deep);">✓</span> elasticsearch:8.11     started (dedicated)
+<span style="color: var(--color-lime-deep);">✓</span> Database "my-project" created
+<span style="color: var(--color-lime-deep);">✓</span> .env written<span style="display:inline-block; width: 8px; height: 14px; background: var(--color-lime); margin-left: 6px; vertical-align: -2px;"></span></pre>
+    </div>
+  </div></body></html>

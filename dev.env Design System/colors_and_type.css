@@ -1,0 +1,290 @@
+/* =============================================================================
+   dev.env — design tokens
+   Drop this file into any HTML page and you have the full system.
+   ============================================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:ital,wght@0,400;0,500;1,400&display=swap');
+
+:root {
+  /* ---------- Color · base ---------- */
+  --color-ink: #0e1116;          /* near-black, cool tint  · body type on light */
+  --color-paper: #f7f6f2;        /* warm cream             · default light surface */
+  --color-lime: #c6f432;         /* electric accent        · the only chromatic brand color */
+  --color-lime-soft: #e6f9a3;    /* lime tint              · for backgrounds, never type */
+  --color-lime-deep: #a8d11a;    /* lime, darkened         · for AA contrast on light bg */
+
+  /* ---------- Color · stone (neutral scale) ---------- */
+  --stone-50:  #faf9f5;
+  --stone-100: #f1f0eb;
+  --stone-200: #e8e7e2;          /* subtle dividers, default border */
+  --stone-300: #d2d1cb;          /* visible card edges */
+  --stone-400: #a8a7a1;          /* placeholder, disabled type */
+  --stone-500: #74736d;          /* secondary type */
+  --stone-600: #54534d;          /* body type alt */
+  --stone-700: #3a3934;          /* code background on dark */
+  --stone-800: #26251f;          /* dark surface 1 */
+  --stone-900: #16140f;          /* dark surface 2 */
+
+  /* ---------- Color · semantic ---------- */
+  --color-success:    #46a758;   /* green · table indicators, never the CLI ✓ */
+  --color-warning:    #ffb224;   /* amber · dedicated badges, "not recommended" callouts */
+  --color-error:      #e5484d;   /* red   · destructive actions */
+  --color-info:       #3e63dd;   /* blue  · inline links on light bg */
+
+  /* ---------- Color · semantic surface aliases ---------- */
+  --fg-1: var(--color-ink);          /* primary type */
+  --fg-2: var(--stone-600);          /* secondary type */
+  --fg-3: var(--stone-500);          /* tertiary / metadata */
+  --fg-mute: var(--stone-400);       /* placeholder / disabled */
+  --fg-invert: var(--color-paper);   /* type on dark bg */
+  --fg-accent: var(--color-lime-deep); /* lime, on light bg, AA-readable */
+
+  --bg-1: var(--color-paper);        /* page */
+  --bg-2: var(--stone-50);           /* nested surface */
+  --bg-3: var(--stone-100);          /* code block bg */
+  --bg-invert: var(--color-ink);     /* dark surface */
+  --bg-accent: var(--color-lime);    /* CTA, cursor block */
+
+  --border-1: var(--stone-200);      /* subtle */
+  --border-2: var(--stone-300);      /* visible */
+  --border-strong: var(--color-ink); /* high-emphasis outline */
+
+  /* ---------- Type · family ---------- */
+  --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', 'Cascadia Code', Consolas, monospace;
+  --font-serif: 'IBM Plex Serif', ui-serif, Georgia, serif;
+
+  /* ---------- Type · scale (px-equivalents in rem) ---------- */
+  --fs-12: 0.75rem;
+  --fs-13: 0.8125rem;
+  --fs-14: 0.875rem;
+  --fs-15: 0.9375rem;
+  --fs-16: 1rem;
+  --fs-17: 1.0625rem;
+  --fs-18: 1.125rem;
+  --fs-22: 1.375rem;
+  --fs-28: 1.75rem;
+  --fs-40: 2.5rem;
+  --fs-56: 3.5rem;
+  --fs-72: 4.5rem;
+
+  /* ---------- Type · weight ---------- */
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+
+  /* ---------- Type · leading ---------- */
+  --lh-tight: 1.05;
+  --lh-snug: 1.25;
+  --lh-base: 1.55;
+  --lh-loose: 1.7;
+
+  /* ---------- Type · tracking ---------- */
+  --tracking-tight: -0.02em;     /* h1 display */
+  --tracking-snug: -0.015em;     /* h2 */
+  --tracking-normal: 0;
+  --tracking-wide: 0.06em;       /* mono eyebrow caps */
+
+  /* ---------- Spacing (8pt grid, 4 for fine adjustments) ---------- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-24: 96px;
+  --space-32: 128px;
+  --space-48: 192px;
+
+  /* ---------- Radii ---------- */
+  --radius-1: 4px;        /* default */
+  --radius-2: 6px;        /* buttons, cards */
+  --radius-3: 8px;        /* large surfaces, terminal frame */
+  --radius-pill: 999px;   /* capsule badges */
+
+  /* ---------- Borders ---------- */
+  --border-width: 1px;
+  --border-style: solid;
+  --border-dashed: 1px dashed;
+
+  /* ---------- Elevation (three steps; mostly flat) ---------- */
+  --elevation-0: none;
+  --elevation-1: 0 1px 0 0 rgb(14 17 22 / 0.04), 0 1px 2px 0 rgb(14 17 22 / 0.06);
+  --elevation-2: 0 8px 24px -8px rgb(14 17 22 / 0.12), 0 2px 4px -2px rgb(14 17 22 / 0.06);
+
+  /* ---------- Layout ---------- */
+  --container-marketing: 1280px;
+  --container-docs: 1080px;
+  --gutter: 32px;
+  --gutter-mobile: 16px;
+  --header-h: 56px;
+  --nav-w: 240px;
+  --toc-w: 200px;
+
+  /* ---------- Motion ---------- */
+  --ease-default: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-press: 80ms;
+  --dur-hover: 150ms;
+  --dur-panel: 240ms;
+  --dur-route: 400ms;
+}
+
+/* =============================================================================
+   Dark theme override · activate with [data-theme="dark"] on <html> or any subtree
+   ============================================================================= */
+[data-theme="dark"] {
+  --fg-1: var(--color-paper);
+  --fg-2: var(--stone-300);
+  --fg-3: var(--stone-400);
+  --fg-mute: var(--stone-500);
+  --fg-invert: var(--color-ink);
+  --fg-accent: var(--color-lime);
+
+  --bg-1: var(--color-ink);
+  --bg-2: var(--stone-900);
+  --bg-3: var(--stone-800);
+  --bg-invert: var(--color-paper);
+
+  --border-1: var(--stone-800);
+  --border-2: var(--stone-700);
+  --border-strong: var(--color-paper);
+}
+
+/* =============================================================================
+   Base · semantic type styles
+   Apply via class (.h1, .h2, .body, .mono, .eyebrow) or wrap a region with
+   .prose for opinionated defaults across raw HTML tags.
+   ============================================================================= */
+.h1, h1 {
+  font-family: var(--font-sans);
+  font-weight: var(--fw-semibold);
+  font-size: var(--fs-56);
+  line-height: var(--lh-tight);
+  letter-spacing: var(--tracking-tight);
+  color: var(--fg-1);
+  margin: 0 0 var(--space-6);
+}
+
+.h2, h2 {
+  font-family: var(--font-sans);
+  font-weight: var(--fw-semibold);
+  font-size: var(--fs-40);
+  line-height: 1.1;
+  letter-spacing: var(--tracking-snug);
+  color: var(--fg-1);
+  margin: 0 0 var(--space-4);
+}
+
+.h3, h3 {
+  font-family: var(--font-sans);
+  font-weight: var(--fw-semibold);
+  font-size: var(--fs-28);
+  line-height: var(--lh-snug);
+  letter-spacing: -0.01em;
+  color: var(--fg-1);
+  margin: 0 0 var(--space-3);
+}
+
+.h4, h4 {
+  font-family: var(--font-sans);
+  font-weight: var(--fw-semibold);
+  font-size: var(--fs-22);
+  line-height: var(--lh-snug);
+  color: var(--fg-1);
+  margin: 0 0 var(--space-3);
+}
+
+.body, p {
+  font-family: var(--font-sans);
+  font-weight: var(--fw-regular);
+  font-size: var(--fs-17);
+  line-height: var(--lh-base);
+  color: var(--fg-2);
+  margin: 0 0 var(--space-4);
+}
+
+.body-sm, small {
+  font-family: var(--font-sans);
+  font-weight: var(--fw-regular);
+  font-size: var(--fs-14);
+  line-height: var(--lh-base);
+  color: var(--fg-3);
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-weight: var(--fw-medium);
+  font-size: var(--fs-13);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--fg-3);
+  margin: 0 0 var(--space-3);
+  display: inline-block;
+}
+
+.mono, code, kbd, samp, pre {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  font-weight: var(--fw-regular);
+}
+
+:not(pre) > code {
+  background: var(--bg-3);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-1);
+  padding: 1px 6px;
+  color: var(--fg-1);
+  font-size: 0.88em;
+}
+
+pre {
+  background: var(--bg-3);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-2);
+  padding: var(--space-4);
+  overflow-x: auto;
+  font-size: var(--fs-14);
+  line-height: 1.55;
+  color: var(--fg-1);
+  margin: 0 0 var(--space-4);
+}
+
+.pull-quote {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: var(--fs-28);
+  line-height: 1.3;
+  color: var(--fg-1);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color var(--dur-hover) var(--ease-out);
+}
+a:hover {
+  border-bottom-color: var(--color-lime-deep);
+}
+[data-theme="dark"] a:hover {
+  border-bottom-color: var(--color-lime);
+}
+
+/* =============================================================================
+   Reset · minimal
+   ============================================================================= */
+*, *::before, *::after { box-sizing: border-box; }
+html { background: var(--bg-1); color: var(--fg-1); }
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--fs-17);
+  line-height: var(--lh-base);
+  color: var(--fg-2);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}

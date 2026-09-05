@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>card</title>
+<link rel="stylesheet" href="../colors_and_type.css"/>
+<style>
+  html, body { margin: 0; padding: 0; background: var(--bg-1); }
+  body { padding: 24px; }
+  .card { display: flex; flex-direction: column; gap: 16px; }
+  .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .swatch { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .chip { width: 64px; height: 64px; border-radius: 4px; border: 1px solid var(--border-1); }
+  .chip-lg { width: 96px; height: 64px; border-radius: 6px; border: 1px solid var(--border-1); }
+  .chip-sm { width: 44px; height: 44px; border-radius: 4px; border: 1px solid var(--border-1); }
+  .lbl { font-family: var(--font-mono); font-size: 11px; color: var(--fg-3); letter-spacing: 0.04em; text-transform: uppercase; }
+  .val { font-family: var(--font-mono); font-size: 12px; color: var(--fg-1); }
+  .grid { display: grid; gap: 12px; }
+</style>
+</head>
+<body>
+
+  <div class="card" style="gap: 12px;">
+    <div class="eyebrow">/ 01 — installation</div>
+    <div style="font-family: var(--font-mono); font-size: 14px; line-height: 1.55; color: var(--fg-1);">$ dev start</div>
+    <div style="font-family: var(--font-mono); font-size: 14px; line-height: 1.55; color: var(--fg-2);">
+      <span style="color: var(--color-lime-deep);">✓</span> mysql:8.0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;already running (shared)<br/>
+      <span style="color: var(--color-lime-deep);">✓</span> redis:latest&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;started (shared)
+    </div>
+    <div class="lbl" style="margin-top: 4px;">Plex Mono · 14 · 400 / 500 · eyebrow uppercase + .06em</div>
+  </div></body></html>

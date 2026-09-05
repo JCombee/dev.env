@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>CLI reference — dev.env</title>
+  <link rel="stylesheet" href="../../colors_and_type.css"/>
+  <link rel="stylesheet" href="styles.css"/>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" src="Primitives.jsx"></script>
+  <script type="text/babel" src="Header.jsx"></script>
+  <script type="text/babel" src="CommandCard.jsx"></script>
+  <script type="text/babel" src="Footer.jsx"></script>
+
+  <script type="text/babel">
+    const commands = [
+      {
+        cmd: 'setup',
+        summary: 'Initialise the global ~/.dev.env/ directory structure. Run this once after installation. Any other command will trigger setup automatically if the directory does not exist yet.',
+        synopsis: 'dev setup',
+        example: '$ dev setup',
+        exampleOutput: `✓ Created ~/.dev.env/
+✓ Created ~/.dev.env/docker/
+✓ Created ~/.dev.env/projects/
+✓ services.yaml initialized
+✓ settings.yaml initialized`,
+        related: ['global'],
+      },
+      {
+        cmd: 'init',
+        summary: 'Initialise dev.env for a project. Runs an interactive wizard that detects your project type, lets you select services, and writes a .dev.env.yaml in the current directory.',
+        synopsis: 'dev init',
+        example: '$ dev init',
+        exampleOutput: `Detected project type: laravel
+Select services (space to toggle, enter to confirm):
+  [x] mysql
+  [x] redis
+MySQL tag [latest]: 8.0
+Enable .env generation? [y/N]: y
+Writing .dev.env.yaml... done`,
+        related: ['project'],
+      },
+      {
+        cmd: 'start',
+        summary: 'Start all services required by the current project and prepare them for use. Provisions per-project resources on first run and reuses shared containers already running for other projects.',
+        synopsis: 'dev start',
+        example: '$ dev start',
+        exampleOutput: `✓ mysql:8.0              already running (shared)
+✓ redis:latest           started (shared)
+✓ elasticsearch:8.11     started (dedicated)
+✓ Database "my-project" created
+✓ .env written`,
+        related: ['project'],
+      },
+      {
+        cmd: 'stop',
+        summary: 'Stop services this project was using. Shared containers only stop when no other active project depends on them. Dedicated containers always stop with the project that owns them.',
+        synopsis: 'dev stop',
+        example: '$ dev stop',
+        exampleOutput: `✓ redis:latest           stopped
+✓ elasticsearch:8.11     stopped (dedicated)
+~ mysql:8.0              kept running (in use by: api-project)`,
+        related: ['project'],
+      },
+      {
+        cmd: 'status',
+        summary: 'Show all containers managed by dev.env and which projects are using them.',
+        synopsis: 'dev status',
+        example: '$ dev status',
+        exampleOutput: `SERVICE                  STATUS     PROJECTS
+mysql:8.0                running    my-project, api-project
+redis:latest             running    my-project
+elasticsearch:8.11       running    api-project (dedicated)`,
+        related: ['global'],
+      },
+      {
+        cmd: 'exec <service>',
+        summary: 'Open an interactive session inside a running container for the current project, with credentials and database pre-filled.',
+        synopsis: 'dev exec <service>\ndev exec              # list available services',
+        example: '$ dev exec mysql',
+        exampleOutput: `mysql> SHOW DATABASES;
++--------------------+
+| Database           |
+| my-project         |
++--------------------+`,
+        related: ['project', 'new in 0.6.0'],
+      },
+      {
+        cmd: 'config',
+        summary: 'Read and write project configuration without editing .dev.env.yaml directly. Supports get, set, and list with dot-notation for nested service config.',
+        synopsis: 'dev config get <key>\ndev config set <key> <value>\ndev config list',
+        flags: [
+          { name: '<key>',   desc: 'Configuration key (dot-notation for nested values).' },
+          { name: '<value>', desc: 'New value to set. String, bool, or number.' },
+        ],
+        example: '$ dev config set services.mysql.tag 8.4',
+        exampleOutput: `✓ services.mysql.tag = 8.4`,
+        related: ['project'],
+      },
+      {
+        cmd: 'global <command>',
+        summary: 'Run commands across all projects and containers, not just the current one. Use global stop to shut everything down regardless of reference counts.',
+        synopsis: 'dev global start\ndev global stop',
+        example: '$ dev global stop',
+        exampleOutput: `✓ redis:latest           stopped
+✓ elasticsearch:8.11     stopped (dedicated — api-project)
+✓ elasticsearch:8.11     stopped (dedicated — search-project)
+✓ mysql:8.0              stopped`,
+        related: ['global'],
+      },
+      {
+        cmd: 'self-update',
+        summary: 'Update dev.env to the latest release published on GitHub.',
+        synopsis: 'dev self-update',
+        example: '$ dev self-update',
+        exampleOutput: `✓ Downloaded v0.6.5
+✓ Replaced /usr/local/bin/dev`,
+        related: [],
+      },
+    ];
+
+    function App() {
+      const [query, setQuery] = React.useState('');
+      const filtered = commands.filter(c =>
+        !query || c.cmd.toLowerCase().includes(query.toLowerCase()) || c.summary.toLowerCase().includes(query.toLowerCase())
+      );
+      return (
+        <>
+          <Header page="ref"/>
+          <main className="container" style={{ paddingTop: 48, paddingBottom: 96, maxWidth: 1080 }}>
+            <div style={{ marginBottom: 32 }}>
+              <Eyebrow>/ reference</Eyebrow>
+              <h1 style={{ fontFamily: 'var(--font-sans)', fontWeight: 600, fontSize: 44, lineHeight: 1.05, letterSpacing: '-0.02em', color: 'var(--fg-1)', margin: '12px 0 12px' }}>
+                CLI reference
+              </h1>
+              <p style={{ fontSize: 16, color: 'var(--fg-2)', maxWidth: 640, margin: '0 0 24px' }}>
+                Every command, every flag. Run <code style={{ background: 'var(--bg-3)', border: '1px solid var(--border-1)', padding: '1px 6px', borderRadius: 3, fontFamily: 'var(--font-mono)', fontSize: '0.88em' }}>dev --help</code> in the terminal for the same content with your installed version.
+              </p>
+              <div style={{ position: 'relative', maxWidth: 360 }}>
+                <input
+                  value={query}
+                  onChange={e => setQuery(e.target.value)}
+                  placeholder="filter commands…"
+                  style={{ width: '100%', fontFamily: 'var(--font-mono)', fontSize: 13, padding: '10px 36px 10px 12px', border: '1px solid var(--border-2)', borderRadius: 6, background: 'var(--bg-1)', color: 'var(--fg-1)', outline: 'none' }}
+                />
+                <span style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)' }}><Kbd>/</Kbd></span>
+              </div>
+            </div>
+            {filtered.map(c => <CommandCard key={c.cmd} {...c}/>)}
+            {filtered.length === 0 && <div className="card-surface" style={{ textAlign: 'center', color: 'var(--fg-3)', fontFamily: 'var(--font-mono)' }}>no matches</div>}
+          </main>
+          <Footer/>
+        </>
+      );
+    }
+    ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+  </script>
+</body>
+</html>
