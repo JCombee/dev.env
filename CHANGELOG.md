@@ -1,4 +1,10 @@
 # Changelog
+## [0.8.0] - 2026-09-05
+
+### New Features
+
+- Add global apps with LiteLLM ([8c14f9d](https://github.com/JCombee/dev.env/commit/8c14f9d6961564e18005036fce52f9b434c453c9))
+
 ## [0.7.0] - 2026-05-21
 
 ### New Features
